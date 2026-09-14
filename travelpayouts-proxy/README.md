@@ -1,8 +1,32 @@
-# Serveur relais Travelpayouts
+# Voyageur — app + serveur relais
 
-Ce petit serveur protège ton token Travelpayouts : le navigateur de
-l'utilisateur appelle ce serveur, et c'est ce serveur — pas le
-navigateur — qui appelle l'API Travelpayouts avec ton token secret.
+Ce dépôt contient deux choses :
+
+- **`public/index.html`** : l'application de planification de voyage
+  (front-end, une seule page HTML/CSS/JS).
+- **`server.js` + `src/`** : le serveur relais qui protège tes tokens
+  d'API (Travelpayouts, Duffel, Booking.com). Le navigateur de
+  l'utilisateur appelle ce serveur, et c'est ce serveur — pas le
+  navigateur — qui appelle les API externes avec les tokens secrets.
+
+Le serveur sert aussi l'application : une fois lancé, ouvre simplement
+`http://localhost:3001` pour l'utiliser.
+
+## Structure du code serveur
+
+```
+server.js            point d'entrée : branche les routeurs, sert public/
+src/config.js         lecture centralisée des variables d'environnement
+src/routes/hotels.js  GET /api/hotels        (Hotellook — voir note ci-dessous)
+src/routes/flights.js GET /api/flights       (Travelpayouts/Aviasales)
+src/routes/duffel.js  GET /api/duffel-flights, /api/duffel-hotels
+src/routes/booking.js GET /api/booking-hotels
+```
+
+> ⚠️ **Hotellook a fermé le 20 octobre 2025** (confirmé par
+> Travelpayouts) : la route `/api/hotels` répondra donc en erreur. Le
+> front-end n'appelle déjà plus cette route — utilise
+> `/api/duffel-hotels` ou `/api/booking-hotels` à la place.
 
 ## 1. Récupérer ton token
 
@@ -19,11 +43,11 @@ cp .env.example .env
 npm start
 ```
 
-Le serveur démarre sur `http://localhost:3001`. Teste-le dans ton
-navigateur :
+Le serveur démarre sur `http://localhost:3001` et sert directement
+l'application. Teste aussi les routes d'API dans ton navigateur :
 
 ```
-http://localhost:3001/api/hotels?location=Rome
+http://localhost:3001/api/status
 http://localhost:3001/api/flights?origin=PAR&destination=FCO
 ```
 
@@ -56,8 +80,13 @@ l'écran, champ "Adresse du serveur relais".
 - Les prix de vols viennent de `prices_for_dates` : ce sont les
   tarifs les moins chers **vus récemment** sur ce trajet, pas une
   recherche en direct seconde par seconde.
-- Les hôtels viennent de Hotellook : mêmes disponibilités que sur
-  Aviasales/Hotellook, pas une recherche multi-plateformes en direct.
+- Hotellook (`/api/hotels`) a fermé le 20 octobre 2025 : cette route
+  est conservée pour compatibilité mais renverra une erreur. Utilise
+  Duffel Stays ou Booking.com pour les hôtels.
+- Duffel Stays nécessite une autorisation spécifique
+  (stays@duffel.com) et Booking.com un accès partenaire approuvé
+  (partnerships.booking.com) — sans ces accès, ces routes renvoient
+  une erreur claire plutôt qu'un plantage.
 - Le plan gratuit de Render/Railway peut mettre le serveur "en
   veille" après une période d'inactivité ; le premier appel après une
   pause peut prendre quelques secondes de plus.
