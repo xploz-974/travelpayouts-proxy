@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StageManager — gestion de rendez-vous d'artiste</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root{
+  --ink:#1a1a24;
+  --ink-soft:#5c5c6e;
+  --paper:#f4f2ee;
+  --paper-raised:#ffffff;
+  --line:#e2dfd6;
+  --violet:#5b3df0;
+  --violet-dark:#4128c4;
+  --violet-soft:#ece8fd;
+  --gold:#e0a52e;
+  --gold-soft:#faedcf;
+  --green:#28a06b;
+  --green-soft:#dcf3e8;
+  --red:#e3564a;
+  --red-soft:#fce0dd;
+  --sidebar-grad: linear-gradient(180deg,#1a1a2e 0%, #241f3a 55%, #2c1f3a 100%);
+  --shadow: 0 1px 2px rgba(20,20,30,.06), 0 8px 20px rgba(20,20,30,.08);
+  --radius: 10px;
+  font-family:'Inter', -apple-system, sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);height:100%;}
+body{display:flex;min-height:100vh;font-size:14.5px;line-height:1.5;}
+h1,h2,h3{font-family:'Fraunces', serif; margin:0; letter-spacing:-0.01em;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+a{color:inherit;}
+
+/* ---------- layout ---------- */
+.app{display:flex;width:100%;min-height:100vh;}
+.sidebar{
+  width:230px;flex-shrink:0;background:var(--sidebar-grad);color:#dcdbe6;
+  display:flex;flex-direction:column;padding:22px 14px;gap:2px;
+}
+.brand{display:flex;flex-direction:column;gap:2px;padding:2px 10px 22px 10px;border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:14px;}
+.brand .mark{font-family:'Fraunces',serif;font-size:21px;font-weight:600;color:#fff;display:flex;align-items:center;gap:8px;}
+.brand .sub{font-size:11.5px;color:#b7a6f5;letter-spacing:.02em;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;
+  color:#c9c7d6;font-size:13.5px;font-weight:500;cursor:pointer;user-select:none;
+}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
+.nav-item.active{background:rgba(255,255,255,.12);color:#fff;}
+.nav-item .icon{width:18px;text-align:center;}
+.nav-spacer{flex:1;}
+.nav-foot{padding:10px;font-size:11px;color:#7c7891;}
+
+.main{flex:1;min-width:0;padding:26px 34px 40px;overflow-y:auto;height:100vh;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap;}
+.topbar h1{font-size:24px;}
+.topbar .actions{display:flex;gap:10px;}
+
+.btn{
+  border:1px solid var(--line);background:var(--paper-raised);color:var(--ink);
+  padding:9px 14px;border-radius:8px;font-size:13.5px;font-weight:600;
+  display:inline-flex;align-items:center;gap:6px;box-shadow:var(--shadow);
+}
+.btn:hover{background:#faf9f6;}
+.btn.primary{background:var(--violet);border-color:var(--violet);color:#fff;}
+.btn.primary:hover{background:var(--violet-dark);}
+.btn.danger{color:var(--red);}
+.btn.small{padding:5px 9px;font-size:12px;}
+.btn.ghost{background:transparent;box-shadow:none;border-color:transparent;}
+.btn.ghost:hover{background:rgba(0,0,0,.05);}
+
+.card{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+.card-pad{padding:18px 20px;}
+
+/* ---------- dashboard ---------- */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px;}
+.stat{padding:16px 18px;}
+.stat .label{font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+.stat .value{font-family:'Fraunces',serif;font-size:28px;margin-top:6px;}
+.stat .sub{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+
+.section-title{font-size:15px;font-weight:700;margin:26px 0 12px;display:flex;align-items:center;justify-content:space-between;}
+
+/* ---------- lists / tables ---------- */
+.list{display:flex;flex-direction:column;gap:10px;}
+.row-card{padding:14px 18px;display:flex;align-items:center;gap:14px;}
+.row-card .avatar{
+  width:38px;height:38px;border-radius:50%;background:var(--violet-soft);color:var(--violet-dark);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;
+}
+.row-main{flex:1;min-width:0;}
+.row-title{font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.row-sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px;display:flex;gap:12px;flex-wrap:wrap;}
+.row-actions{display:flex;gap:6px;flex-shrink:0;}
+
+.badge{padding:2px 9px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.02em;}
+.badge.propose{background:var(--gold-soft);color:#8a6414;}
+.badge.confirme{background:var(--green-soft);color:#166b45;}
+.badge.annule{background:var(--red-soft);color:#a3352b;}
+.badge.termine{background:#e6e6ee;color:#4b4b5e;}
+
+.empty{padding:40px 20px;text-align:center;color:var(--ink-soft);}
+.empty .big{font-size:34px;margin-bottom:8px;}
+
+/* ---------- filters ---------- */
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.filters select, .filters input{
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--paper-raised);font-size:13px;
+}
+.filters input[type=search]{min-width:200px;}
+
+/* ---------- modal ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(20,15,35,.45);display:none;align-items:center;justify-content:center;
+  z-index:50;padding:20px;
+}
+.overlay.open{display:flex;}
+.modal{
+  background:var(--paper-raised);border-radius:14px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+.modal-head h2{font-size:18px;}
+.modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+.field input,.field select,.field textarea{
+  border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;background:#fdfcfa;
+}
+.field textarea{resize:vertical;min-height:60px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;}
+.close-x{border:none;background:none;font-size:20px;color:var(--ink-soft);line-height:1;}
+
+/* ---------- calendar ---------- */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.cal-dow{font-size:11px;font-weight:700;color:var(--ink-soft);text-align:center;padding-bottom:4px;text-transform:uppercase;}
+.cal-cell{
+  background:var(--paper-raised);border:1px solid var(--line);border-radius:8px;min-height:92px;
+  padding:6px;font-size:12px;display:flex;flex-direction:column;gap:3px;cursor:pointer;
+}
+.cal-cell.out{opacity:.35;}
+.cal-cell.today{border-color:var(--violet);box-shadow:0 0 0 1px var(--violet) inset;}
+.cal-daynum{font-weight:700;font-size:12px;}
+.cal-evt{background:var(--violet-soft);color:var(--violet-dark);border-radius:5px;padding:2px 5px;font-size:10.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cal-evt.st-annule{background:var(--red-soft);color:#a3352b;text-decoration:line-through;}
+.cal-evt.st-termine{background:#e6e6ee;color:#4b4b5e;}
+.cal-more{font-size:10px;color:var(--ink-soft);}
+
+@media(max-width:760px){
+  .sidebar{display:none;}
+  .main{padding:18px;}
+  .field-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">🎤 StageManager</div>
+      <div class="sub">gestion de prestations</div>
+    </div>
+    <div class="nav-item active" data-view="dashboard"><span class="icon">📊</span> Tableau de bord</div>
+    <div class="nav-item" data-view="appointments"><span class="icon">🗓️</span> Rendez-vous</div>
+    <div class="nav-item" data-view="calendar"><span class="icon">📅</span> Calendrier</div>
+    <div class="nav-item" data-view="artists"><span class="icon">🎨</span> Artistes</div>
+    <div class="nav-item" data-view="clients"><span class="icon">🤝</span> Clients / Bookers</div>
+    <div class="nav-item" data-view="settings"><span class="icon">⚙️</span> Données</div>
+    <div class="nav-spacer"></div>
+    <div class="nav-foot">Données stockées localement<br/>dans ce navigateur.</div>
+  </aside>
+
+  <main class="main" id="main"></main>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+/* ============================================================
+   StageManager — application mono-fichier de gestion de rendez-
+   vous / prestations pour un manager d'artiste(s).
+   Persistance : localStorage (aucun serveur requis).
+   ============================================================ */
+
+const STORAGE_KEY = 'stagemanager.data.v1';
+
+const STATUS = {
+  propose: { label: 'Proposé', class: 'propose' },
+  confirme: { label: 'Confirmé', class: 'confirme' },
+  annule: { label: 'Annulé', class: 'annule' },
+  termine: { label: 'Terminé', class: 'termine' },
+};
+
+const TYPES = ['Concert', 'Showcase', 'Répétition', 'Session studio', 'Interview / Presse', 'Événement privé', 'Autre'];
+
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){ console.warn('Lecture localStorage impossible', e); }
+  return { artists: [], clients: [], appointments: [] };
+}
+
+function saveData(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadData();
+let currentView = 'dashboard';
+let calMonth = new Date(); calMonth.setDate(1);
+let apptFilters = { artist:'', status:'', search:'' };
+
+/* ---------- helpers ---------- */
+function fmtDate(d){
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('fr-FR', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+}
+function fmtMoney(n){
+  return (Number(n)||0).toLocaleString('fr-FR', { style:'currency', currency:'EUR', maximumFractionDigits:0 });
+}
+function artistById(id){ return state.artists.find(a=>a.id===id); }
+function clientById(id){ return state.clients.find(c=>c.id===id); }
+function initials(name){
+  return (name||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function sortedAppointments(list){
+  return [...list].sort((a,b)=> (a.date+a.startTime).localeCompare(b.date+b.startTime));
+}
+
+/* ---------- navigation ---------- */
+document.querySelectorAll('.nav-item').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    el.classList.add('active');
+    currentView = el.dataset.view;
+    render();
+  });
+});
+
+function render(){
+  const main = document.getElementById('main');
+  if(currentView==='dashboard') main.innerHTML = renderDashboard();
+  else if(currentView==='appointments') main.innerHTML = renderAppointments();
+  else if(currentView==='calendar') main.innerHTML = renderCalendar();
+  else if(currentView==='artists') main.innerHTML = renderArtists();
+  else if(currentView==='clients') main.innerHTML = renderClients();
+  else if(currentView==='settings') main.innerHTML = renderSettings();
+  bindViewEvents();
+}
+
+/* ---------- DASHBOARD ---------- */
+function renderDashboard(){
+  const today = todayStr();
+  const upcoming = sortedAppointments(state.appointments.filter(a=>a.date>=today && a.status!=='annule'));
+  const pending = state.appointments.filter(a=>a.status==='propose').length;
+  const now = new Date();
+  const monthKey = now.toISOString().slice(0,7);
+  const revenueMonth = state.appointments
+    .filter(a=>a.date.startsWith(monthKey) && a.status!=='annule')
+    .reduce((s,a)=>s+(Number(a.fee)||0),0);
+
+  const next5 = upcoming.slice(0,5);
+
+  return `
+    <div class="topbar">
+      <h1>Tableau de bord</h1>
+      <div class="actions">
+        <button class="btn primary" data-action="new-appt">+ Nouveau rendez-vous</button>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="card stat">
+        <div class="label">Prestations à venir</div>
+        <div class="value">${upcoming.length}</div>
+        <div class="sub">non annulées</div>
+      </div>
+      <div class="card stat">
+        <div class="label">En attente de confirmation</div>
+        <div class="value">${pending}</div>
+        <div class="sub">à relancer</div>
+      </div>
+      <div class="card stat">
+        <div class="label">Revenus du mois</div>
+        <div class="value">${fmtMoney(revenueMonth)}</div>
+        <div class="sub">${now.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}</div>
+      </div>
+      <div class="card stat">
+        <div class="label">Artistes gérés</div>
+        <div class="value">${state.artists.length}</div>
+        <div class="sub">${state.clients.length} clients / bookers</div>
+      </div>
+    </div>
+
+    <div class="section-title">Prochains rendez-vous</div>
+    <div class="list">
+      ${next5.length ? next5.map(a=>apptRow(a)).join('') : emptyState('📭','Aucun rendez-vous à venir','Ajoute une prestation pour la voir apparaître ici.')}
+    </div>
+  `;
+}
+
+function emptyState(icon, title, sub){
+  return `<div class="card empty"><div class="big">${icon}</div><div style="font-weight:600;margin-bottom:4px;">${title}</div><div>${sub}</div></div>`;
+}
+
+function apptRow(a){
+  const artist = artistById(a.artistId);
+  const client = clientById(a.clientId);
+  const st = STATUS[a.status] || STATUS.propose;
+  return `
+  <div class="card row-card">
+    <div class="avatar">${initials(artist?artist.name:'?')}</div>
+    <div class="row-main">
+      <div class="row-title">${escapeHtml(a.title||a.type||'Prestation')} <span class="badge ${st.class}">${st.label}</span></div>
+      <div class="row-sub">
+        <span>🎤 ${artist?escapeHtml(artist.name):'—'}</span>
+        <span>📅 ${fmtDate(a.date)} · ${a.startTime||'?'}${a.endTime?'–'+a.endTime:''}</span>
+        ${a.location?`<span>📍 ${escapeHtml(a.location)}</span>`:''}
+        ${client?`<span>🤝 ${escapeHtml(client.name)}</span>`:''}
+        ${a.fee?`<span>💶 ${fmtMoney(a.fee)}</span>`:''}
+      </div>
+    </div>
+    <div class="row-actions">
+      <button class="btn small" data-action="edit-appt" data-id="${a.id}">Modifier</button>
+      <button class="btn small danger" data-action="del-appt" data-id="${a.id}">Suppr.</button>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(s){
+  return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- APPOINTMENTS ---------- */
+function renderAppointments(){
+  let list = state.appointments;
+  if(apptFilters.artist) list = list.filter(a=>a.artistId===apptFilters.artist);
+  if(apptFilters.status) list = list.filter(a=>a.status===apptFilters.status);
+  if(apptFilters.search){
+    const q = apptFilters.search.toLowerCase();
+    list = list.filter(a=>
+      (a.title||'').toLowerCase().includes(q) ||
+      (a.location||'').toLowerCase().includes(q) ||
+      (artistById(a.artistId)?.name||'').toLowerCase().includes(q) ||
+      (clientById(a.clientId)?.name||'').toLowerCase().includes(q)
+    );
+  }
+  list = sortedAppointments(list);
+
+  return `
+    <div class="topbar">
+      <h1>Rendez-vous & prestations</h1>
+      <div class="actions">
+        <button class="btn primary" data-action="new-appt">+ Nouveau rendez-vous</button>
+      </div>
+    </div>
+    <div class="filters">
+      <select id="f-artist">
+        <option value="">Tous les artistes</option>
+        ${state.artists.map(a=>`<option value="${a.id}" ${apptFilters.artist===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}
+      </select>
+      <select id="f-status">
+        <option value="">Tous les statuts</option>
+        ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${apptFilters.status===k?'selected':''}>${v.label}</option>`).join('')}
+      </select>
+      <input type="search" id="f-search" placeholder="Rechercher (titre, lieu, client...)" value="${escapeHtml(apptFilters.search)}"/>
+    </div>
+    <div class="list">
+      ${list.length ? list.map(a=>apptRow(a)).join('') : emptyState('🗂️','Aucun rendez-vous','Modifie les filtres ou ajoute une nouvelle prestation.')}
+    </div>
+  `;
+}
+
+/* ---------- CALENDAR ---------- */
+function renderCalendar(){
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  const first = new Date(y,m,1);
+  const startOffset = (first.getDay()+6)%7; // lundi=0
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const today = todayStr();
+
+  const byDate = {};
+  state.appointments.forEach(a=>{ (byDate[a.date] = byDate[a.date]||[]).push(a); });
+
+  let cells = '';
+  for(let i=0;i<startOffset;i++) cells += `<div class="cal-cell out"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evts = sortedAppointments(byDate[dateStr]||[]);
+    const shown = evts.slice(0,3);
+    cells += `<div class="cal-cell ${dateStr===today?'today':''}" data-date="${dateStr}">
+      <div class="cal-daynum">${d}</div>
+      ${shown.map(a=>`<div class="cal-evt st-${a.status}">${a.startTime||''} ${escapeHtml(a.title||artistById(a.artistId)?.name||'')}</div>`).join('')}
+      ${evts.length>3?`<div class="cal-more">+${evts.length-3} autre(s)</div>`:''}
+    </div>`;
+  }
+
+  return `
+    <div class="topbar">
+      <h1>Calendrier</h1>
+      <div class="actions">
+        <button class="btn primary" data-action="new-appt">+ Nouveau rendez-vous</button>
+      </div>
+    </div>
+    <div class="card card-pad">
+      <div class="cal-head">
+        <button class="btn small" data-action="cal-prev">← Mois préc.</button>
+        <h2 style="text-transform:capitalize;">${calMonth.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}</h2>
+        <button class="btn small" data-action="cal-next">Mois suiv. →</button>
+      </div>
+      <div class="cal-grid">
+        ${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d=>`<div class="cal-dow">${d}</div>`).join('')}
+        ${cells}
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- ARTISTS ---------- */
+function renderArtists(){
+  return `
+    <div class="topbar">
+      <h1>Artistes</h1>
+      <div class="actions"><button class="btn primary" data-action="new-artist">+ Ajouter un artiste</button></div>
+    </div>
+    <div class="list">
+      ${state.artists.length ? state.artists.map(a=>{
+        const count = state.appointments.filter(x=>x.artistId===a.id).length;
+        return `<div class="card row-card">
+          <div class="avatar">${initials(a.name)}</div>
+          <div class="row-main">
+            <div class="row-title">${escapeHtml(a.name)}</div>
+            <div class="row-sub">
+              ${a.genre?`<span>🎵 ${escapeHtml(a.genre)}</span>`:''}
+              ${a.phone?`<span>📞 ${escapeHtml(a.phone)}</span>`:''}
+              ${a.email?`<span>✉️ ${escapeHtml(a.email)}</span>`:''}
+              <span>${count} prestation(s)</span>
+            </div>
+          </div>
+          <div class="row-actions">
+            <button class="btn small" data-action="edit-artist" data-id="${a.id}">Modifier</button>
+            <button class="btn small danger" data-action="del-artist" data-id="${a.id}">Suppr.</button>
+          </div>
+        </div>`;
+      }).join('') : emptyState('🎨','Aucun artiste','Ajoute le premier artiste que tu gères.')}
+    </div>
+  `;
+}
+
+/* ---------- CLIENTS ---------- */
+function renderClients(){
+  return `
+    <div class="topbar">
+      <h1>Clients / Bookers</h1>
+      <div class="actions"><button class="btn primary" data-action="new-client">+ Ajouter un client</button></div>
+    </div>
+    <div class="list">
+      ${state.clients.length ? state.clients.map(c=>{
+        const count = state.appointments.filter(x=>x.clientId===c.id).length;
+        return `<div class="card row-card">
+          <div class="avatar">${initials(c.name)}</div>
+          <div class="row-main">
+            <div class="row-title">${escapeHtml(c.name)}</div>
+            <div class="row-sub">
+              ${c.company?`<span>🏢 ${escapeHtml(c.company)}</span>`:''}
+              ${c.phone?`<span>📞 ${escapeHtml(c.phone)}</span>`:''}
+              ${c.email?`<span>✉️ ${escapeHtml(c.email)}</span>`:''}
+              <span>${count} prestation(s)</span>
+            </div>
+          </div>
+          <div class="row-actions">
+            <button class="btn small" data-action="edit-client" data-id="${c.id}">Modifier</button>
+            <button class="btn small danger" data-action="del-client" data-id="${c.id}">Suppr.</button>
+          </div>
+        </div>`;
+      }).join('') : emptyState('🤝','Aucun client','Ajoute un organisateur, salle ou booker.')}
+    </div>
+  `;
+}
+
+/* ---------- SETTINGS ---------- */
+function renderSettings(){
+  return `
+    <div class="topbar"><h1>Données</h1></div>
+    <div class="card card-pad" style="display:flex;flex-direction:column;gap:14px;max-width:520px;">
+      <div>
+        <div style="font-weight:700;margin-bottom:4px;">Sauvegarde</div>
+        <div class="row-sub" style="margin-bottom:10px;">Exporte toutes tes données (artistes, clients, rendez-vous) dans un fichier JSON.</div>
+        <button class="btn" data-action="export">⬇ Exporter en JSON</button>
+      </div>
+      <div>
+        <div style="font-weight:700;margin-bottom:4px;">Restauration</div>
+        <div class="row-sub" style="margin-bottom:10px;">Importer un fichier JSON précédemment exporté (remplace les données actuelles).</div>
+        <input type="file" id="import-file" accept="application/json" style="display:none;"/>
+        <button class="btn" data-action="import">⬆ Importer un fichier</button>
+      </div>
+      <div>
+        <div style="font-weight:700;margin-bottom:4px;color:var(--red);">Zone dangereuse</div>
+        <div class="row-sub" style="margin-bottom:10px;">Supprime définitivement toutes les données locales.</div>
+        <button class="btn danger" data-action="reset-all">🗑 Tout effacer</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- MODALS ---------- */
+function openModal(html){
+  document.getElementById('modal').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal(){
+  document.getElementById('overlay').classList.remove('open');
+}
+document.getElementById('overlay').addEventListener('click', e=>{
+  if(e.target.id==='overlay') closeModal();
+});
+
+function artistModal(existing){
+  const a = existing || { id:null, name:'', genre:'', phone:'', email:'', notes:'' };
+  openModal(`
+    <div class="modal-head"><h2>${existing?"Modifier l'artiste":'Nouvel artiste'}</h2><button class="close-x" data-action="close">✕</button></div>
+    <form id="artist-form">
+      <div class="modal-body">
+        <div class="field"><label>Nom / nom de scène *</label><input required name="name" value="${escapeHtml(a.name)}"/></div>
+        <div class="field-row">
+          <div class="field"><label>Genre / discipline</label><input name="genre" value="${escapeHtml(a.genre)}"/></div>
+          <div class="field"><label>Téléphone</label><input name="phone" value="${escapeHtml(a.phone)}"/></div>
+        </div>
+        <div class="field"><label>Email</label><input type="email" name="email" value="${escapeHtml(a.email)}"/></div>
+        <div class="field"><label>Notes</label><textarea name="notes">${escapeHtml(a.notes)}</textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" data-action="close">Annuler</button>
+        <button type="submit" class="btn primary">Enregistrer</button>
+      </div>
+    </form>
+  `);
+  document.getElementById('artist-form').addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const rec = { id: a.id||uid(), name: fd.get('name').trim(), genre: fd.get('genre').trim(), phone: fd.get('phone').trim(), email: fd.get('email').trim(), notes: fd.get('notes').trim() };
+    if(!rec.name) return;
+    if(a.id){ const i = state.artists.findIndex(x=>x.id===a.id); state.artists[i]=rec; }
+    else state.artists.push(rec);
+    saveData(); closeModal(); render();
+  });
+}
+
+function clientModal(existing){
+  const c = existing || { id:null, name:'', company:'', phone:'', email:'', notes:'' };
+  openModal(`
+    <div class="modal-head"><h2>${existing?'Modifier le client':'Nouveau client / booker'}</h2><button class="close-x" data-action="close">✕</button></div>
+    <form id="client-form">
+      <div class="modal-body">
+        <div class="field"><label>Nom du contact *</label><input required name="name" value="${escapeHtml(c.name)}"/></div>
+        <div class="field-row">
+          <div class="field"><label>Structure / salle</label><input name="company" value="${escapeHtml(c.company)}"/></div>
+          <div class="field"><label>Téléphone</label><input name="phone" value="${escapeHtml(c.phone)}"/></div>
+        </div>
+        <div class="field"><label>Email</label><input type="email" name="email" value="${escapeHtml(c.email)}"/></div>
+        <div class="field"><label>Notes</label><textarea name="notes">${escapeHtml(c.notes)}</textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" data-action="close">Annuler</button>
+        <button type="submit" class="btn primary">Enregistrer</button>
+      </div>
+    </form>
+  `);
+  document.getElementById('client-form').addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const rec = { id: c.id||uid(), name: fd.get('name').trim(), company: fd.get('company').trim(), phone: fd.get('phone').trim(), email: fd.get('email').trim(), notes: fd.get('notes').trim() };
+    if(!rec.name) return;
+    if(c.id){ const i = state.clients.findIndex(x=>x.id===c.id); state.clients[i]=rec; }
+    else state.clients.push(rec);
+    saveData(); closeModal(); render();
+  });
+}
+
+function apptModal(existing, presetDate){
+  const a = existing || { id:null, artistId:'', clientId:'', title:'', type:TYPES[0], date: presetDate||todayStr(), startTime:'20:00', endTime:'', location:'', fee:'', status:'propose', notes:'' };
+  if(!state.artists.length){
+    alert("Ajoute d'abord au moins un artiste avant de créer un rendez-vous.");
+    return;
+  }
+  openModal(`
+    <div class="modal-head"><h2>${existing?'Modifier le rendez-vous':'Nouveau rendez-vous'}</h2><button class="close-x" data-action="close">✕</button></div>
+    <form id="appt-form">
+      <div class="modal-body">
+        <div class="field"><label>Titre de la prestation</label><input name="title" placeholder="ex. Concert au Bataclan" value="${escapeHtml(a.title)}"/></div>
+        <div class="field-row">
+          <div class="field"><label>Artiste *</label>
+            <select required name="artistId">
+              <option value="">— choisir —</option>
+              ${state.artists.map(x=>`<option value="${x.id}" ${a.artistId===x.id?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field"><label>Type</label>
+            <select name="type">${TYPES.map(t=>`<option ${a.type===t?'selected':''}>${t}</option>`).join('')}</select>
+          </div>
+        </div>
+        <div class="field"><label>Client / organisateur</label>
+          <select name="clientId">
+            <option value="">— aucun —</option>
+            ${state.clients.map(x=>`<option value="${x.id}" ${a.clientId===x.id?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Date *</label><input required type="date" name="date" value="${a.date}"/></div>
+          <div class="field"><label>Statut</label>
+            <select name="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${a.status===k?'selected':''}>${v.label}</option>`).join('')}</select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Heure de début</label><input type="time" name="startTime" value="${a.startTime||''}"/></div>
+          <div class="field"><label>Heure de fin</label><input type="time" name="endTime" value="${a.endTime||''}"/></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Lieu</label><input name="location" value="${escapeHtml(a.location)}"/></div>
+          <div class="field"><label>Cachet (€)</label><input type="number" min="0" step="1" name="fee" value="${a.fee||''}"/></div>
+        </div>
+        <div class="field"><label>Notes</label><textarea name="notes">${escapeHtml(a.notes)}</textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" data-action="close">Annuler</button>
+        <button type="submit" class="btn primary">Enregistrer</button>
+      </div>
+    </form>
+  `);
+  document.getElementById('appt-form').addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const rec = {
+      id: a.id||uid(),
+      artistId: fd.get('artistId'),
+      clientId: fd.get('clientId')||'',
+      title: fd.get('title').trim(),
+      type: fd.get('type'),
+      date: fd.get('date'),
+      startTime: fd.get('startTime')||'',
+      endTime: fd.get('endTime')||'',
+      location: fd.get('location').trim(),
+      fee: fd.get('fee')?Number(fd.get('fee')):'',
+      status: fd.get('status'),
+      notes: fd.get('notes').trim(),
+    };
+    if(!rec.artistId || !rec.date) return;
+    if(a.id){ const i = state.appointments.findIndex(x=>x.id===a.id); state.appointments[i]=rec; }
+    else state.appointments.push(rec);
+    saveData(); closeModal(); render();
+  });
+}
+
+/* ---------- event delegation ---------- */
+function bindViewEvents(){
+  const main = document.getElementById('main');
+
+  main.querySelectorAll('[data-action]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const action = el.dataset.action;
+      const id = el.dataset.id;
+      if(action==='new-appt') apptModal(null, currentView==='calendar'?undefined:undefined);
+      else if(action==='edit-appt') apptModal(state.appointments.find(a=>a.id===id));
+      else if(action==='del-appt'){ if(confirm('Supprimer ce rendez-vous ?')){ state.appointments = state.appointments.filter(a=>a.id!==id); saveData(); render(); } }
+      else if(action==='new-artist') artistModal(null);
+      else if(action==='edit-artist') artistModal(artistById(id));
+      else if(action==='del-artist'){ if(confirm('Supprimer cet artiste et ses rendez-vous associés ?')){ state.artists = state.artists.filter(a=>a.id!==id); state.appointments = state.appointments.filter(a=>a.artistId!==id); saveData(); render(); } }
+      else if(action==='new-client') clientModal(null);
+      else if(action==='edit-client') clientModal(clientById(id));
+      else if(action==='del-client'){ if(confirm('Supprimer ce client ?')){ state.clients = state.clients.filter(c=>c.id!==id); state.appointments.forEach(a=>{ if(a.clientId===id) a.clientId=''; }); saveData(); render(); } }
+      else if(action==='cal-prev'){ calMonth.setMonth(calMonth.getMonth()-1); render(); }
+      else if(action==='cal-next'){ calMonth.setMonth(calMonth.getMonth()+1); render(); }
+      else if(action==='export') exportData();
+      else if(action==='import') document.getElementById('import-file').click();
+      else if(action==='reset-all'){ if(confirm('Effacer TOUTES les données ? Cette action est irréversible.')){ state = { artists:[], clients:[], appointments:[] }; saveData(); render(); } }
+    });
+  });
+
+  main.querySelectorAll('.cal-cell[data-date]').forEach(el=>{
+    el.addEventListener('click', ()=> apptModal(null, el.dataset.date));
+  });
+
+  const fArtist = main.querySelector('#f-artist');
+  const fStatus = main.querySelector('#f-status');
+  const fSearch = main.querySelector('#f-search');
+  if(fArtist) fArtist.addEventListener('change', e=>{ apptFilters.artist = e.target.value; render(); });
+  if(fStatus) fStatus.addEventListener('change', e=>{ apptFilters.status = e.target.value; render(); });
+  if(fSearch) fSearch.addEventListener('input', e=>{ apptFilters.search = e.target.value; render(); });
+
+  const importFile = main.querySelector('#import-file');
+  if(importFile) importFile.addEventListener('change', handleImport);
+}
+
+document.addEventListener('click', e=>{
+  if(e.target.dataset && e.target.dataset.action==='close') closeModal();
+});
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `stagemanager-export-${todayStr()}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function handleImport(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed || !Array.isArray(parsed.artists) || !Array.isArray(parsed.clients) || !Array.isArray(parsed.appointments)){
+        alert('Fichier invalide.'); return;
+      }
+      state = parsed;
+      saveData();
+      render();
+      alert('Import réussi.');
+    }catch(err){
+      alert('Impossible de lire ce fichier JSON.');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+render();
+</script>
+</body>
+</html>

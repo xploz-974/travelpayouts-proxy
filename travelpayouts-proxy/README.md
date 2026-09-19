@@ -1,6 +1,6 @@
 # Voyageur — app + serveur relais
 
-Ce dépôt contient deux choses :
+Ce dépôt contient trois choses :
 
 - **`public/index.html`** : l'application de planification de voyage
   (front-end, une seule page HTML/CSS/JS).
@@ -8,6 +8,11 @@ Ce dépôt contient deux choses :
   d'API (Travelpayouts, Duffel, Booking.com). Le navigateur de
   l'utilisateur appelle ce serveur, et c'est ce serveur — pas le
   navigateur — qui appelle les API externes avec les tokens secrets.
+- **`artist-manager/index.html`** : StageManager, une application
+  indépendante (une seule page HTML/CSS/JS, données en localStorage)
+  pour un manager d'artiste : gestion des artistes, des clients/bookers
+  et des rendez-vous / prestations (statuts, cachets, calendrier). Voir
+  `artist-manager/README.md`.
 
 Le serveur sert aussi l'application : une fois lancé, ouvre simplement
 `http://localhost:3001` pour l'utiliser.
