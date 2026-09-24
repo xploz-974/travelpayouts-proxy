@@ -4786,6 +4786,17 @@ function activitySearchLinksHTML(theme, dest){
   `;
 }
 
+function normalizeActivityUrl(raw){
+  const trimmed = (raw||'').trim();
+  if(!trimmed) return null;
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : 'https://'+trimmed;
+  try{
+    const url = new URL(withScheme);
+    if(url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return url.href;
+  }catch(err){ return null; }
+}
+
 function renderActivities(){
   const wrap = document.getElementById('activitiesWrap');
   if(!wrap) return;
@@ -4810,6 +4821,7 @@ function renderActivities(){
                     <input type="checkbox" class="act-done-cb" ${idea.done?'checked':''}>
                     <span style="${idea.done?'text-decoration:line-through;color:var(--ink-soft);':''}">${idea.text}${idea.addedBy ? ' <span style="color:var(--ink-soft);font-size:11px;">— '+idea.addedBy+'</span>' : ''}</span>
                   </label>
+                  ${idea.link ? `<a href="${idea.link}" target="_blank" rel="noopener noreferrer" title="${idea.link}" style="margin-right:6px;color:var(--teal-dark);">🔗</a>` : ''}
                   ${typeof idea.price === 'number' ? `<b style="font-size:12.5px;white-space:nowrap;margin-right:6px;">≈ ${idea.price.toLocaleString('fr-FR')} €</b>` : ''}
                   <button class="link-btn act-del-btn" title="Supprimer">✕</button>
                 </div>
@@ -4818,6 +4830,7 @@ function renderActivities(){
             </div>
             <form class="act-add-form" data-dest="${d.id}" data-theme="${theme.key}" style="display:flex;gap:6px;margin-top:8px;">
               <input type="text" placeholder="Ajouter une idée (ex: parc aquatique, resto conseillé par Léa...)" class="act-add-input" style="flex:1;">
+              <input type="text" placeholder="Lien (optionnel)" class="act-add-link" style="width:160px;">
               <input type="number" min="0" step="0.01" placeholder="Prix estimé (€)" class="act-add-price" style="width:150px;">
               <button type="submit" class="btn ghost small">+ Ajouter</button>
             </form>
@@ -4831,11 +4844,13 @@ function renderActivities(){
     e.preventDefault();
     const input = form.querySelector('.act-add-input');
     const priceInput = form.querySelector('.act-add-price');
+    const linkInput = form.querySelector('.act-add-link');
     const text = input.value.trim();
     if(!text) return;
     const priceVal = parseFloat(priceInput.value);
     const price = Number.isFinite(priceVal) && priceVal >= 0 ? priceVal : null;
-    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, price, done:false });
+    const link = normalizeActivityUrl(linkInput.value);
+    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, price, link, done:false });
     autosave();
     renderActivities();
   }));
