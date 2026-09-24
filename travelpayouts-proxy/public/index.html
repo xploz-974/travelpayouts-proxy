@@ -322,6 +322,10 @@ input,select,textarea{font-family:inherit;}
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19a4.5 4.5 0 000-9 6 6 0 10-11.4 3M9 13a4 4 0 104 4"/></svg>
       <span class="label">Météo &amp; prix</span>
     </button>
+    <button class="nav-item" data-view="activites">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/><path d="M3 12l1.5 1.5M21 3l-2 2"/><circle cx="7" cy="7" r="2"/></svg>
+      <span class="label">Activités &amp; achats</span>
+    </button>
 
     <div class="nav-group-label">Voyageurs &amp; docs</div>
     <button class="nav-item" data-view="voyageurs">
@@ -631,6 +635,17 @@ input,select,textarea{font-family:inherit;}
         </div>
       </div>
 
+      <!-- ACTIVITÉS & ACHATS -->
+      <div class="view" id="view-activites">
+        <div class="section-head">
+          <div>
+            <h2>Activités &amp; achats</h2>
+            <p>Par destination et par thème — vêtements, matériel, parcs d'attraction, restaurants, change, ou tout autre besoin. Chacun ajoute ses idées, toute la famille les voit ; les liens ouvrent Maps/Google/TripAdvisor pour comparer sur place.</p>
+          </div>
+        </div>
+        <div id="activitiesWrap"></div>
+      </div>
+
       <!-- CONSEILS & JURIDIQUE -->
       <div class="view" id="view-conseils">
         <div class="section-head">
@@ -854,7 +869,7 @@ function defaultState(){
     tripTitle:'Italie & Croatie — juin 2027',
     tripRef:'VG-2027-0417',
     tripMeta:'4 voyageurs · 2 groupes · 12 jours · 3 destinations',
-    destinations, groups, travelers, stays, days, placements, weather, costItems: [], flightTickets: [],
+    destinations, groups, travelers, stays, days, placements, weather, costItems: [], flightTickets: [], activities: [],
     settings: { proxyUrl:'https://travelpayouts-proxy.onrender.com', originIata:'', requiredDocTypes: ['Passeport','Assurance voyage'], realDataOnly: true },
   };
 }
@@ -864,7 +879,7 @@ function blankState(){
     tripTitle:'Nouveau voyage',
     tripRef:'VG-'+new Date().getFullYear()+'-'+Math.floor(1000+Math.random()*9000),
     tripMeta:'Cliquez pour décrire votre voyage (dates, nombre de voyageurs...)',
-    destinations:[], groups:[], travelers:[], stays:[], days:[], placements:{}, weather:[], costItems:[], flightTickets:[],
+    destinations:[], groups:[], travelers:[], stays:[], days:[], placements:{}, weather:[], costItems:[], flightTickets:[], activities:[],
     settings: { proxyUrl:'https://travelpayouts-proxy.onrender.com', originIata:'', requiredDocTypes: ['Passeport','Assurance voyage'] },
   };
 }
@@ -1243,6 +1258,7 @@ function patchSettingsDefaults(s){
   if(typeof s.settings.realDataOnly !== 'boolean') s.settings.realDataOnly = true;
   if(!s.costItems) s.costItems = [];
   if(!s.flightTickets) s.flightTickets = [];
+  if(!s.activities) s.activities = [];
   if(!s.tripRef) s.tripRef = 'VG-'+new Date().getFullYear()+'-'+Math.floor(1000+Math.random()*9000);
   return s;
 }
@@ -1696,6 +1712,7 @@ const ALL_TABS = [
   {key:'billets', label:"Billets d'avion"},
   {key:'hebergements', label:'Hébergements'},
   {key:'meteo', label:'Météo & prix'},
+  {key:'activites', label:'Activités & achats'},
   {key:'voyageurs', label:'Voyageurs'},
   {key:'documents', label:'Documents'},
   {key:'budget', label:'Budget & rapports'},
@@ -4743,6 +4760,94 @@ document.getElementById('bud-pdf-agency').addEventListener('click', ()=>{
   exportBudgetPDF(state.travelers, state.tripTitle || 'Dossier complet', getBudgetCategories(), true);
 });
 
+/* ============================ ACTIVITÉS & ACHATS ============================
+   Pas d'API dédiée (vêtements, matériel, parcs, restaurants, change... n'ont
+   pas d'équivalent Travelpayouts/Duffel) : chaque thème propose des liens de
+   recherche rapide (Maps/Google/TripAdvisor) + une liste d'idées libres que
+   la famille remplit elle-même, partagée avec le reste du dossier (export,
+   QR, sauvegarde) comme n'importe quelle autre donnée du voyage.
+=================================================================================== */
+const ACTIVITY_THEMES = [
+  {key:'vetements', label:'Vêtements', icon:'👕'},
+  {key:'materiel', label:'Matériel & équipement', icon:'🎒'},
+  {key:'parcs', label:"Parcs d'attraction & jeux", icon:'🎢'},
+  {key:'restaurants', label:'Restaurants', icon:'🍽️'},
+  {key:'change', label:'Change & argent', icon:'💱'},
+  {key:'autre', label:'Divertissement & autre', icon:'🎁'},
+];
+
+function activitySearchLinksHTML(theme, dest){
+  const place = `${dest.name}, ${dest.country}`;
+  const q = `${theme.label} ${place}`;
+  return `
+    <a href="https://www.google.com/maps/search/${encodeURIComponent(theme.label+' près de '+dest.name)}" target="_blank" rel="noopener" style="color:var(--teal-dark);">🗺️ Maps</a>
+    <a href="https://www.google.com/search?q=${encodeURIComponent(q)}" target="_blank" rel="noopener" style="color:var(--teal-dark);">🔎 Google</a>
+    <a href="https://www.tripadvisor.fr/Search?q=${encodeURIComponent(q)}" target="_blank" rel="noopener" style="color:var(--teal-dark);">⭐ TripAdvisor</a>
+  `;
+}
+
+function renderActivities(){
+  const wrap = document.getElementById('activitiesWrap');
+  if(!wrap) return;
+  if(!state.activities) state.activities = [];
+  if(!state.destinations.length){ wrap.innerHTML = '<p class="dash-empty">Ajoute une destination pour organiser les activités et achats.</p>'; return; }
+
+  wrap.innerHTML = state.destinations.map(d => `
+    <div class="dash-card dash-wide" style="margin-bottom:16px;">
+      <div class="dc-head"><h3>🧭 ${d.name}, ${d.country}</h3></div>
+      ${ACTIVITY_THEMES.map(theme => {
+        const ideas = state.activities.filter(a=>a.destId===d.id && a.theme===theme.key);
+        return `
+          <div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line);">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+              <div style="font-weight:600;">${theme.icon} ${theme.label}</div>
+              <div style="display:flex;gap:10px;font-size:12px;">${activitySearchLinksHTML(theme, d)}</div>
+            </div>
+            <div class="dash-list">
+              ${ideas.length ? ideas.map(idea=>`
+                <div class="dash-row" data-act-id="${idea.id}">
+                  <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;">
+                    <input type="checkbox" class="act-done-cb" ${idea.done?'checked':''}>
+                    <span style="${idea.done?'text-decoration:line-through;color:var(--ink-soft);':''}">${idea.text}${idea.addedBy ? ' <span style="color:var(--ink-soft);font-size:11px;">— '+idea.addedBy+'</span>' : ''}</span>
+                  </label>
+                  <button class="link-btn act-del-btn" title="Supprimer">✕</button>
+                </div>
+              `).join('') : '<p class="dash-empty" style="font-size:12px;">Aucune idée pour l\'instant — ajoute la première.</p>'}
+            </div>
+            <form class="act-add-form" data-dest="${d.id}" data-theme="${theme.key}" style="display:flex;gap:6px;margin-top:8px;">
+              <input type="text" placeholder="Ajouter une idée (ex: parc aquatique, resto conseillé par Léa...)" class="act-add-input" style="flex:1;">
+              <button type="submit" class="btn ghost small">+ Ajouter</button>
+            </form>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `).join('');
+
+  wrap.querySelectorAll('.act-add-form').forEach(form => form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const input = form.querySelector('.act-add-input');
+    const text = input.value.trim();
+    if(!text) return;
+    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, done:false });
+    autosave();
+    renderActivities();
+  }));
+
+  wrap.querySelectorAll('[data-act-id]').forEach(row => {
+    const id = row.dataset.actId;
+    row.querySelector('.act-done-cb').addEventListener('change', e=>{
+      const idea = state.activities.find(a=>a.id===id);
+      if(idea){ idea.done = e.target.checked; autosave(); renderActivities(); }
+    });
+    row.querySelector('.act-del-btn').addEventListener('click', ()=>{
+      state.activities = state.activities.filter(a=>a.id!==id);
+      autosave();
+      renderActivities();
+    });
+  });
+}
+
 /* ============================ CONSEILS & JURIDIQUE ============================
    Astuces argent / applis transport : générales, stables, valables pour tout le
    monde — ne dépendent pas d'internet. Conseils par destination (vaccins, lois,
@@ -4920,6 +5025,7 @@ function renderAll(){
   renderAssistant();
   renderTickets();
   renderBudget();
+  renderActivities();
   renderCountryAdvice();
   applyTabVisibility();
   renderAdmin();
