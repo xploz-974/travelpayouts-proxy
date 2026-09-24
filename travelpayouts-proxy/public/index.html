@@ -4797,6 +4797,8 @@ function normalizeActivityUrl(raw){
   }catch(err){ return null; }
 }
 
+let lastActivityAddedBy = '';
+
 function renderActivities(){
   const wrap = document.getElementById('activitiesWrap');
   if(!wrap) return;
@@ -4833,6 +4835,7 @@ function renderActivities(){
             </div>
             <form class="act-add-form" data-dest="${d.id}" data-theme="${theme.key}" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
               <input type="text" placeholder="Ajouter une idée (ex: parc aquatique, resto conseillé par Léa...)" class="act-add-input" style="flex:1;min-width:220px;">
+              <input type="text" placeholder="Qui propose ? (optionnel)" class="act-add-by" style="width:150px;" value="${lastActivityAddedBy}">
               <input type="text" placeholder="Note (optionnel)" class="act-add-note" style="flex:1;min-width:160px;">
               <input type="text" placeholder="Lien (optionnel)" class="act-add-link" style="width:160px;">
               <input type="number" min="0" step="0.01" placeholder="Prix estimé (€)" class="act-add-price" style="width:150px;">
@@ -4850,13 +4853,16 @@ function renderActivities(){
     const priceInput = form.querySelector('.act-add-price');
     const linkInput = form.querySelector('.act-add-link');
     const noteInput = form.querySelector('.act-add-note');
+    const byInput = form.querySelector('.act-add-by');
     const text = input.value.trim();
     if(!text) return;
     const priceVal = parseFloat(priceInput.value);
     const price = Number.isFinite(priceVal) && priceVal >= 0 ? priceVal : null;
     const link = normalizeActivityUrl(linkInput.value);
     const note = noteInput.value.trim() || null;
-    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, price, link, note, done:false });
+    const addedBy = byInput.value.trim() || null;
+    lastActivityAddedBy = addedBy || '';
+    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, price, link, note, addedBy, done:false });
     autosave();
     renderActivities();
   }));
