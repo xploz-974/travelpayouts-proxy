@@ -4810,12 +4810,15 @@ function renderActivities(){
                     <input type="checkbox" class="act-done-cb" ${idea.done?'checked':''}>
                     <span style="${idea.done?'text-decoration:line-through;color:var(--ink-soft);':''}">${idea.text}${idea.addedBy ? ' <span style="color:var(--ink-soft);font-size:11px;">— '+idea.addedBy+'</span>' : ''}</span>
                   </label>
+                  ${typeof idea.price === 'number' ? `<b style="font-size:12.5px;white-space:nowrap;margin-right:6px;">≈ ${idea.price.toLocaleString('fr-FR')} €</b>` : ''}
                   <button class="link-btn act-del-btn" title="Supprimer">✕</button>
                 </div>
               `).join('') : '<p class="dash-empty" style="font-size:12px;">Aucune idée pour l\'instant — ajoute la première.</p>'}
+              ${ideas.some(i=>typeof i.price === 'number') ? `<div class="dash-row" style="font-size:12px;color:var(--ink-soft);"><span>Sous-total estimé</span><b>${ideas.reduce((sum,i)=>sum+(i.price||0),0).toLocaleString('fr-FR')} €</b></div>` : ''}
             </div>
             <form class="act-add-form" data-dest="${d.id}" data-theme="${theme.key}" style="display:flex;gap:6px;margin-top:8px;">
               <input type="text" placeholder="Ajouter une idée (ex: parc aquatique, resto conseillé par Léa...)" class="act-add-input" style="flex:1;">
+              <input type="number" min="0" step="0.01" placeholder="Prix estimé (€)" class="act-add-price" style="width:150px;">
               <button type="submit" class="btn ghost small">+ Ajouter</button>
             </form>
           </div>
@@ -4827,9 +4830,12 @@ function renderActivities(){
   wrap.querySelectorAll('.act-add-form').forEach(form => form.addEventListener('submit', e=>{
     e.preventDefault();
     const input = form.querySelector('.act-add-input');
+    const priceInput = form.querySelector('.act-add-price');
     const text = input.value.trim();
     if(!text) return;
-    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, done:false });
+    const priceVal = parseFloat(priceInput.value);
+    const price = Number.isFinite(priceVal) && priceVal >= 0 ? priceVal : null;
+    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, price, done:false });
     autosave();
     renderActivities();
   }));
