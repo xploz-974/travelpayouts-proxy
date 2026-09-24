@@ -4816,20 +4816,24 @@ function renderActivities(){
             </div>
             <div class="dash-list">
               ${ideas.length ? ideas.map(idea=>`
-                <div class="dash-row" data-act-id="${idea.id}">
-                  <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;">
-                    <input type="checkbox" class="act-done-cb" ${idea.done?'checked':''}>
-                    <span style="${idea.done?'text-decoration:line-through;color:var(--ink-soft);':''}">${idea.text}${idea.addedBy ? ' <span style="color:var(--ink-soft);font-size:11px;">— '+idea.addedBy+'</span>' : ''}</span>
-                  </label>
-                  ${idea.link ? `<a href="${idea.link}" target="_blank" rel="noopener noreferrer" title="${idea.link}" style="margin-right:6px;color:var(--teal-dark);">🔗</a>` : ''}
-                  ${typeof idea.price === 'number' ? `<b style="font-size:12.5px;white-space:nowrap;margin-right:6px;">≈ ${idea.price.toLocaleString('fr-FR')} €</b>` : ''}
-                  <button class="link-btn act-del-btn" title="Supprimer">✕</button>
+                <div class="dash-row" data-act-id="${idea.id}" style="flex-direction:column;align-items:stretch;gap:3px;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;">
+                      <input type="checkbox" class="act-done-cb" ${idea.done?'checked':''}>
+                      <span style="${idea.done?'text-decoration:line-through;color:var(--ink-soft);':''}">${idea.text}${idea.addedBy ? ' <span style="color:var(--ink-soft);font-size:11px;">— '+idea.addedBy+'</span>' : ''}</span>
+                    </label>
+                    ${idea.link ? `<a href="${idea.link}" target="_blank" rel="noopener noreferrer" title="${idea.link}" style="margin-right:6px;color:var(--teal-dark);">🔗</a>` : ''}
+                    ${typeof idea.price === 'number' ? `<b style="font-size:12.5px;white-space:nowrap;margin-right:6px;">≈ ${idea.price.toLocaleString('fr-FR')} €</b>` : ''}
+                    <button class="link-btn act-del-btn" title="Supprimer">✕</button>
+                  </div>
+                  ${idea.note ? `<p class="forecast-note" style="margin:0 0 0 26px;">${idea.note}</p>` : ''}
                 </div>
               `).join('') : '<p class="dash-empty" style="font-size:12px;">Aucune idée pour l\'instant — ajoute la première.</p>'}
               ${ideas.some(i=>typeof i.price === 'number') ? `<div class="dash-row" style="font-size:12px;color:var(--ink-soft);"><span>Sous-total estimé</span><b>${ideas.reduce((sum,i)=>sum+(i.price||0),0).toLocaleString('fr-FR')} €</b></div>` : ''}
             </div>
-            <form class="act-add-form" data-dest="${d.id}" data-theme="${theme.key}" style="display:flex;gap:6px;margin-top:8px;">
-              <input type="text" placeholder="Ajouter une idée (ex: parc aquatique, resto conseillé par Léa...)" class="act-add-input" style="flex:1;">
+            <form class="act-add-form" data-dest="${d.id}" data-theme="${theme.key}" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+              <input type="text" placeholder="Ajouter une idée (ex: parc aquatique, resto conseillé par Léa...)" class="act-add-input" style="flex:1;min-width:220px;">
+              <input type="text" placeholder="Note (optionnel)" class="act-add-note" style="flex:1;min-width:160px;">
               <input type="text" placeholder="Lien (optionnel)" class="act-add-link" style="width:160px;">
               <input type="number" min="0" step="0.01" placeholder="Prix estimé (€)" class="act-add-price" style="width:150px;">
               <button type="submit" class="btn ghost small">+ Ajouter</button>
@@ -4845,12 +4849,14 @@ function renderActivities(){
     const input = form.querySelector('.act-add-input');
     const priceInput = form.querySelector('.act-add-price');
     const linkInput = form.querySelector('.act-add-link');
+    const noteInput = form.querySelector('.act-add-note');
     const text = input.value.trim();
     if(!text) return;
     const priceVal = parseFloat(priceInput.value);
     const price = Number.isFinite(priceVal) && priceVal >= 0 ? priceVal : null;
     const link = normalizeActivityUrl(linkInput.value);
-    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, price, link, done:false });
+    const note = noteInput.value.trim() || null;
+    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, price, link, note, done:false });
     autosave();
     renderActivities();
   }));
