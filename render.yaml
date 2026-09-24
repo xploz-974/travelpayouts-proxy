@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: voyageur
+    runtime: node
+    rootDir: travelpayouts-proxy
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: TRAVELPAYOUTS_TOKEN
+        sync: false
+      - key: DUFFEL_API_KEY
+        sync: false
+      - key: BOOKING_AFFILIATE_ID
+        sync: false
+      - key: BOOKING_API_TOKEN
+        sync: false
+      - key: BOOKING_ENV
+        value: sandbox
