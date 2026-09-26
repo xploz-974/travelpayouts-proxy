@@ -718,6 +718,11 @@ const DOC_TYPES = ['Passeport', "Carte d'identité", 'Visa', 'Assurance voyage',
 const REQUIRED_DOC_TYPES = ['Passeport', 'Assurance voyage'];
 const TRANSPORT_MODES = ['Avion','Train','Bus / Car','Voiture','Ferry / Bateau','Autre'];
 const TRANSPORT_ICONS = { 'Avion':'✈️', 'Train':'🚆', 'Bus / Car':'🚌', 'Voiture':'🚗', 'Ferry / Bateau':'⛴️', 'Autre':'❓' };
+// Met une majuscule à chaque mot quelle que soit la casse saisie (noms de famille/groupes) :
+// "famille dupont" / "FAMILLE DUPONT" -> "Famille Dupont", en gardant les tirets ("marie-claire" -> "Marie-Claire").
+function capitalizeWords(str){
+  return str.toLowerCase().split(/(\s+|-)/).map(part => /^[\s-]+$/.test(part) ? part : (part.charAt(0).toUpperCase()+part.slice(1))).join('');
+}
 // Ordre indicatif du moins cher au plus cher, en moyenne générale — pas un prix réel comparé,
 // juste un repère habituel (varie énormément selon la distance, la saison, la compagnie...).
 const TRANSPORT_PRICE_RANK = { 'Bus / Car':1, 'Train':2, 'Ferry / Bateau':3, 'Voiture':4, 'Avion':5, 'Autre':6 };
@@ -3570,7 +3575,7 @@ function startWizard(){
   document.getElementById('wz-start-dest').addEventListener('click', ()=>{
     const count = Math.max(1, parseInt(document.getElementById('wz-count').value) || 1);
     const rawNames = document.getElementById('wz-groupname').value.split(',').map(s=>s.trim()).filter(Boolean);
-    const names = rawNames.length ? rawNames : ['Mon groupe'];
+    const names = (rawNames.length ? rawNames : ['Mon groupe']).map(capitalizeWords).sort((a,b)=> a.localeCompare(b, 'fr'));
     const groups = names.map((name,i)=>({ id:'g'+Date.now()+'-'+i, name }));
     groups.forEach(g=> state.groups.push(g));
     wizard = { travelersTarget: count, travelersCreated: 0, groupIds: groups.map(g=>g.id), destCount: 0 };
@@ -3643,48 +3648,38 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
     ${wizard ? wizardProgressHTML(2) : ''}
     <h3>Ajouter une destination</h3>
     <div class="sub">Choisis le pays puis la ville dans les listes — ça évite les fautes de frappe et remplit automatiquement le code aéroport.</div>
-    ${uniqueVisitedCities.length ? `
-    <div class="field" style="background:var(--amber-soft);border-radius:8px;padding:10px 12px;">
-      <label>Cette étape, c'est un retour vers une ville déjà visitée ?</label>
-      <select id="nd-revisit-select">
-        <option value="">— Non, une nouvelle ville —</option>
-        ${uniqueVisitedCities.map((c,i)=>`<option value="${i}">${c.name}, ${c.country}${c.iata?' ('+c.iata+')':''}</option>`).join('')}
-      </select>
-      <p class="forecast-note" style="margin-top:6px;">Pratique pour une excursion interne — ex. tu pars visiter Chiang Mai puis tu reviens à Bangkok avant de repartir ailleurs (ou de rentrer). Choisis "nouvelle ville" pour continuer vers un autre endroit, comme Phuket.</p>
-    </div>` : ''}
-    <div class="field" style="background:var(--paper);border-radius:8px;padding:10px 12px;">
-      <label>Cette étape part de :</label>
-      ${legOriginLabel ? `
-        <p class="forecast-note" style="margin:2px 0 8px 0;"><b id="nd-legorigin-display">${legOriginIata || '?'}</b> — ${legOriginLabel} — <button type="button" class="link-btn" id="nd-legorigin-override-btn">pas correct ?</button></p>
-        <div id="nd-legorigin-override" style="display:none;">
-          <input id="nd-legorigin-input" placeholder="Code IATA, ex. BKK" maxlength="3" style="width:110px;text-transform:uppercase;">
-          <p class="forecast-note" style="margin-top:4px;">Utile si tu ne pars pas exactement de ta dernière étape (ex. correspondance depuis un autre aéroport).</p>
-        </div>
-      ` : `
-        <p class="forecast-note" style="margin:2px 0 8px 0;">Aéroport de départ pas encore connu.</p>
-        ${originPickerHTML('ndorig')}
-      `}
-      <p class="forecast-note" style="margin-top:6px;">Sert à vérifier si un vol vers la destination choisie a déjà été référencé, et à proposer des alternatives sinon.</p>
+    <p class="forecast-note" style="margin-bottom:10px;">
+      ${legOriginLabel
+        ? `Départ de cette étape : <b id="nd-legorigin-display">${legOriginIata || '?'}</b> (${legOriginLabel}) — <button type="button" class="link-btn" id="nd-legorigin-override-btn">pas correct ?</button>`
+        : `Aéroport de départ pas encore connu — <button type="button" class="link-btn" id="nd-legorigin-origin-btn">le renseigner</button>`}
+    </p>
+    <div id="nd-legorigin-override" style="display:none;margin-bottom:10px;">
+      <input id="nd-legorigin-input" placeholder="Code IATA, ex. BKK" maxlength="3" style="width:110px;text-transform:uppercase;">
+      <p class="forecast-note" style="margin-top:4px;">Utile si tu ne pars pas exactement de ta dernière étape (ex. correspondance depuis un autre aéroport).</p>
     </div>
+    <div id="nd-legorigin-picker" style="display:none;margin-bottom:10px;">${originPickerHTML('ndorig')}</div>
     <div class="field"><label>Pays</label>
       <select id="nd-country">
         <option value="">— choisir un pays —</option>
         ${COUNTRY_LIST.map(c=>`<option value="${c}">${c}</option>`).join('')}
       </select>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;color:var(--ink-soft);margin-top:6px;">
-        <input type="checkbox" id="nd-country-filter-toggle" ${legOriginIata?'checked':'disabled'}>
-        Ne montrer que les pays desservis en direct depuis ${legOriginIata||'cette étape'}
-      </label>
       <p id="nd-country-filter-note" class="forecast-note" style="margin-top:4px;"></p>
     </div>
     <div class="field">
       <label>Ville</label>
+      ${uniqueVisitedCities.length ? `
+      <p class="forecast-note" style="margin-bottom:6px;">Une escale ou un retour vers une ville déjà visitée ?
+        <select id="nd-revisit-select" style="font-size:12px;padding:2px 4px;">
+          <option value="">— non, nouvelle ville —</option>
+          ${uniqueVisitedCities.map((c,i)=>`<option value="${i}">${c.name}, ${c.country}${c.iata?' ('+c.iata+')':''}</option>`).join('')}
+        </select>
+      </p>` : ''}
+      <select id="nd-city" disabled style="margin-bottom:8px;"><option value="">— choisis d'abord un pays —</option></select>
       <div style="display:flex;gap:8px;">
-        <input id="nd-city-search" placeholder="Tape le nom de la ville…" style="flex:1;">
+        <input id="nd-city-search" placeholder="Ou tape le nom d'une autre ville…" style="flex:1;">
         <button type="button" class="btn ghost small" id="nd-city-search-btn">Rechercher</button>
       </div>
-      <select id="nd-city" disabled style="margin-top:8px;"><option value="">— cherche une ville ci-dessus —</option></select>
-      <p class="forecast-note" style="margin-top:6px;">Recherche en direct (couvre pratiquement toutes les villes du monde) — choisis toujours la bonne dans la liste avant de continuer.</p>
+      <p class="forecast-note" style="margin-top:6px;">La liste propose d'abord les villes courantes du pays choisi — utilise la recherche si la tienne n'y est pas.</p>
     </div>
     <div class="field"><label>Aéroport le plus proche (calculé automatiquement)</label><input id="nd-iata" readonly style="background:#f0ede4;color:var(--ink-soft);"></div>
     <div id="nd-route-note"></div>
@@ -3738,10 +3733,17 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
       input.addEventListener('change', ()=>{
         legOriginIata = input.value.trim().toUpperCase();
         document.getElementById('nd-legorigin-display').textContent = legOriginIata || '?';
-        refreshCountryFilter();
+        refreshCountryOrder();
         const destIata = currentDestIata();
         if(destIata) checkRouteFeasibility(legOriginIata, destIata, document.getElementById('nd-city-search').value);
       });
+    });
+  }
+  const legOriginOriginBtn = document.getElementById('nd-legorigin-origin-btn');
+  if(legOriginOriginBtn){
+    legOriginOriginBtn.addEventListener('click', ()=>{
+      document.getElementById('nd-legorigin-picker').style.display = 'block';
+      legOriginOriginBtn.style.display = 'none';
     });
   }
 
@@ -3821,10 +3823,23 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
       if(match) countrySel.value = match.value;
     }
     const frame = document.getElementById('nd-map');
+    iataInput.dataset.timezone = city.timezone || '';
+    if(city.latitude==null || city.longitude==null){
+      // Ville préréglée (liste courante du pays) : aéroport déjà connu, pas besoin de géocoder.
+      if(frame) frame.src = `https://www.google.com/maps?q=${encodeURIComponent(city.name+', '+(city.country||''))}&output=embed`;
+      if(city.iata){
+        iataInput.value = `${city.iata} — aéroport principal (préréglé)`;
+        iataInput.dataset.iata = city.iata;
+        if(legOriginIata) checkRouteFeasibility(legOriginIata, city.iata, city.name);
+      } else {
+        iataInput.value = '';
+        iataInput.dataset.iata = '';
+      }
+      return;
+    }
     if(frame) frame.src = `https://www.google.com/maps?q=${city.latitude},${city.longitude}&output=embed`;
     iataInput.value = "Recherche de l'aéroport le plus proche…";
     iataInput.dataset.iata = '';
-    iataInput.dataset.timezone = city.timezone || '';
     try{
       const airport = await findNearestAirport(city.latitude, city.longitude);
       if(airport){
@@ -3840,32 +3855,32 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
     }
   });
 
-  async function refreshCountryFilter(){
-    const toggle = document.getElementById('nd-country-filter-toggle');
+  async function refreshCountryOrder(){
     const countrySel = document.getElementById('nd-country');
     const note = document.getElementById('nd-country-filter-note');
     const previousValue = countrySel.value;
-    if(toggle.checked && legOriginIata){
-      countrySel.innerHTML = '<option value="">Chargement des pays desservis…</option>';
-      note.textContent = '';
+    if(legOriginIata){
       try{
         const reachableCountries = await getReachableCountries(legOriginIata);
-        const list = COUNTRY_LIST.filter(c=> reachableCountries.has(c));
-        countrySel.innerHTML = '<option value="">— choisir un pays —</option>' + list.map(c=>`<option value="${c}">${c}</option>`).join('');
-        if(list.includes(previousValue)) countrySel.value = previousValue;
-        note.textContent = list.length ? `${list.length} pays desservis en direct depuis ${legOriginIata} (base OpenFlights).` : `Aucun pays avec vol direct référencé depuis ${legOriginIata} — décoche la case pour voir tous les pays.`;
+        const reachable = COUNTRY_LIST.filter(c=> reachableCountries.has(c));
+        const others = COUNTRY_LIST.filter(c=> !reachableCountries.has(c));
+        countrySel.innerHTML = '<option value="">— choisir un pays —</option>'
+          + (reachable.length ? `<optgroup label="✈️ Vols directs depuis ${legOriginIata}">${reachable.map(c=>`<option value="${c}">${c}</option>`).join('')}</optgroup>` : '')
+          + `<optgroup label="🌍 Tous les autres pays">${others.map(c=>`<option value="${c}">${c}</option>`).join('')}</optgroup>`;
+        if(COUNTRY_LIST.includes(previousValue)) countrySel.value = previousValue;
+        note.textContent = reachable.length ? `${reachable.length} pays avec vol direct depuis ${legOriginIata} mis en avant (base OpenFlights) — tous les pays du monde restent disponibles en dessous.` : '';
       }catch(err){
         console.error(err);
         countrySel.innerHTML = '<option value="">— choisir un pays —</option>' + COUNTRY_LIST.map(c=>`<option value="${c}">${c}</option>`).join('');
-        note.textContent = "Impossible de filtrer pour l'instant (connexion) — liste complète affichée.";
+        if(COUNTRY_LIST.includes(previousValue)) countrySel.value = previousValue;
+        note.textContent = '';
       }
     } else {
       countrySel.innerHTML = '<option value="">— choisir un pays —</option>' + COUNTRY_LIST.map(c=>`<option value="${c}">${c}</option>`).join('');
       if(COUNTRY_LIST.includes(previousValue)) countrySel.value = previousValue;
-      note.textContent = toggle.checked ? "Renseigne d'abord un aéroport de départ." : '';
+      note.textContent = '';
     }
   }
-  document.getElementById('nd-country-filter-toggle').addEventListener('change', refreshCountryFilter);
   document.querySelectorAll('.transport-chip .nd-transport-cb').forEach(cb=> cb.addEventListener('change', ()=>{
     cb.closest('.transport-chip').classList.toggle('selected', cb.checked);
   }));
@@ -3874,23 +3889,29 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
     legOriginIata = iata;
     const destIata = currentDestIata();
     if(destIata) checkRouteFeasibility(iata, destIata, document.getElementById('nd-city-search').value);
-    const toggle = document.getElementById('nd-country-filter-toggle');
-    toggle.disabled = false;
-    toggle.checked = true;
-    toggle.parentElement.lastChild.textContent = ` Ne montrer que les pays desservis en direct depuis ${iata}`;
-    refreshCountryFilter();
+    refreshCountryOrder();
     renderKidTimeline();
   });
-  refreshCountryFilter();
+  refreshCountryOrder();
 
   document.getElementById('nd-country').addEventListener('change', e=>{
     document.getElementById('nd-city-search').value = '';
-    document.getElementById('nd-city').innerHTML = '<option value="">— cherche une ville ci-dessus —</option>';
-    document.getElementById('nd-city').disabled = true;
     document.getElementById('nd-iata').value = ''; document.getElementById('nd-iata').dataset.iata = '';
     document.getElementById('nd-route-note').innerHTML = '';
+    const citySel = document.getElementById('nd-city');
+    const country = e.target.value;
+    const preset = GEO_DATA[country];
+    if(preset && preset.cities && preset.cities.length){
+      cityGeoResults = preset.cities.map(c=>({ name:c.name, country, latitude:null, longitude:null, timezone:null, iata:c.iata }));
+      citySel.innerHTML = '<option value="">— choisir une ville —</option>' + cityGeoResults.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
+      citySel.disabled = false;
+    } else {
+      cityGeoResults = [];
+      citySel.innerHTML = '<option value="">— cherche une ville ci-dessous —</option>';
+      citySel.disabled = true;
+    }
     const frame = document.getElementById('nd-map');
-    if(frame && e.target.value) frame.src = `https://www.google.com/maps?q=${encodeURIComponent(e.target.value)}&output=embed`;
+    if(frame && country) frame.src = `https://www.google.com/maps?q=${encodeURIComponent(country)}&output=embed`;
   });
   document.getElementById('nd-map').src = 'https://www.google.com/maps?q=Europe&output=embed';
   document.getElementById('nd-route-note').innerHTML = state.settings.originIata ? '' : '<p class="forecast-note">Renseigne ton aéroport de départ ci-dessus pour vérifier la faisabilité du trajet.</p>';
