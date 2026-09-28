@@ -1369,6 +1369,49 @@ async function deleteBackup(key){
   openHistoryModal();
 }
 
+/* ============================ SAUVEGARDE CLOUD (Cloudflare R2) ============================
+   Passe par le serveur relais (voir src/routes/backup.js) : le navigateur ne parle jamais
+   directement à Cloudflare, les identifiants R2 restent côté serveur. Permet de retrouver
+   son dossier de voyage depuis n'importe quel appareil, contrairement à la sauvegarde
+   locale (localStorage / window.storage) qui reste propre à cet appareil.
+================================================================================================ */
+async function callProxyPost(path, body){
+  if(!state.settings.proxyUrl){ throw { kind:'no-proxy', message:"Configure d'abord un serveur relais dans ⚙ Paramètres." }; }
+  let res;
+  try{
+    res = await fetch(`${state.settings.proxyUrl}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }catch(err){
+    throw { kind:'unreachable', message:"Impossible de joindre le serveur relais à cette adresse — vérifie qu'elle est correcte et que le service est démarré." };
+  }
+  let data;
+  try{ data = await res.json(); }
+  catch(err){ throw { kind:'bad-response', message:`Le serveur a répondu (code ${res.status}) mais pas avec le format attendu.` }; }
+  if(!res.ok || data.error){
+    throw { kind:'api-error', message: data.error || `Erreur du serveur relais (code ${res.status}).` };
+  }
+  return data;
+}
+
+async function saveCloudBackup(label){
+  await callProxyPost('/api/backup', { label, data: state });
+}
+async function listCloudBackups(){
+  const data = await callProxy('/api/backup/list');
+  return data.items || [];
+}
+async function restoreCloudBackup(key){
+  const parsed = await callProxy('/api/backup/get?key='+encodeURIComponent(key));
+  state = patchSettingsDefaults(parsed.data);
+  closeModal();
+  renderAll();
+  await autosave();
+  showToast('Sauvegarde cloud restaurée ✓');
+}
+
 /* Export / import en fichier .json — fonctionne toujours, sur n'importe quel appareil,
    et peut être stocké n'importe où (Drive, clé USB, ou même un dépôt GitHub PRIVÉ —
    voir la note dans le modal, ces fichiers contiennent des photos de documents). */
@@ -1416,6 +1459,13 @@ async function openHistoryModal(){
         <label class="btn ghost small" style="cursor:pointer;">📂 Importer un fichier<input type="file" accept="application/json" id="hm-import-file" style="display:none;"></label>
       </div>
     </div>
+    <div class="field" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px;">
+      <label>☁️ Sauvegarde cloud (Cloudflare R2)</label>
+      <p class="forecast-note" style="margin:0 0 8px 0;">Accessible depuis n'importe quel appareil, via ton serveur relais — nécessite qu'il soit configuré avec les identifiants R2 (voir README).</p>
+      <button class="btn ghost small" id="hm-cloud-save">☁️ Sauvegarder dans le cloud</button>
+      <p class="forecast-note" id="hm-cloud-error" style="margin-top:6px;color:#963d3d;"></p>
+      <div id="hm-cloud-list" style="margin-top:10px;"><p class="dash-empty">Chargement des sauvegardes cloud…</p></div>
+    </div>
   `;
   document.getElementById('overlay').classList.add('show');
   document.getElementById('modalClose').addEventListener('click', closeModal);
@@ -1429,6 +1479,47 @@ async function openHistoryModal(){
     if(file) importBackupFile(file);
     closeModal();
   });
+
+  async function refreshCloudList(){
+    const cloudWrap = document.getElementById('hm-cloud-list');
+    const errEl = document.getElementById('hm-cloud-error');
+    if(!cloudWrap) return;
+    try{
+      const items = await listCloudBackups();
+      errEl.textContent = '';
+      if(!items.length){ cloudWrap.innerHTML = '<p class="dash-empty">Aucune sauvegarde cloud pour l\'instant.</p>'; return; }
+      cloudWrap.innerHTML = items.map(b => `
+        <div class="backup-row">
+          <div>
+            <div class="bdate">${b.date ? new Date(b.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})+' à '+new Date(b.date).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '—'}</div>
+            <div class="blabel">${b.label}</div>
+          </div>
+          <div class="backup-actions">
+            <button class="btn ghost small" data-cloud-restore="${b.key}">Restaurer</button>
+          </div>
+        </div>
+      `).join('');
+      cloudWrap.querySelectorAll('[data-cloud-restore]').forEach(btn=> btn.addEventListener('click', ()=>{
+        if(confirm('Remplacer le dossier actuel par cette sauvegarde cloud ?')) restoreCloudBackup(btn.dataset.cloudRestore);
+      }));
+    }catch(err){
+      cloudWrap.innerHTML = '';
+      errEl.textContent = err.message || 'Sauvegarde cloud indisponible.';
+    }
+  }
+  document.getElementById('hm-cloud-save').addEventListener('click', async ()=>{
+    const label = prompt('Nom de cette sauvegarde cloud (facultatif) :', 'Sauvegarde manuelle');
+    if(label === null) return;
+    try{
+      await saveCloudBackup(label);
+      showToast('Sauvegarde envoyée dans le cloud ✓');
+      refreshCloudList();
+    }catch(err){
+      document.getElementById('hm-cloud-error').textContent = err.message || "Échec de l'envoi vers le cloud.";
+    }
+  });
+  refreshCloudList();
+
   const backups = await listBackups();
   const wrap = document.getElementById('backupListWrap');
   if(!wrap) return; // modal fermée entre-temps
