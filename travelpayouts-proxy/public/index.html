@@ -1095,6 +1095,8 @@ async function loadWeatherCard(dest){
       <div class="wx-row"><span>Humidité moyenne</span><b>${info.humidity!=null ? info.humidity+'%' : 'n/d'}</b></div>
       <div class="wx-row"><span>Ensoleillement</span><b>${info.sunshineHours!=null ? info.sunshineHours+'h/jour' : 'n/d'}</b></div>
       ${wEntry.priceLevel ? `<div class="wx-row"><span>Indicateur tarifaire</span><span class="wx-badge ${badgeClass(wEntry.priceLevel)}">${priceLabel(wEntry.priceLevel)}</span></div>` : ''}
+      ${dest.realFlightPrice ? `<div class="wx-row"><span>Vol réel</span><b>${dest.realFlightPrice}€/pers. · ${dest.realFlightAirline} <span style="font-weight:400;color:var(--ink-soft);font-size:10px;">(${dest.realFlightSource||'?'})</span> <button class="link-btn" style="font-size:10px;" data-wxeditflightprice="${dest.id}">modifier</button></b></div>`
+        : ((dest.transportModes||[]).includes('Avion') ? `<div class="wx-row" style="flex-wrap:wrap;gap:8px;"><span>Vol réel</span><span><button class="link-btn" style="font-size:11px;" data-wxfindflight="${dest.id}">Travelpayouts →</button> <button class="link-btn" style="font-size:11px;" data-wxfindflightduffel="${dest.id}">Duffel →</button></span></div>` : '')}
       <div style="margin-top:10px;"><canvas id="wx-chart-${dest.id}" height="130"></canvas></div>
       <p style="font-size:12.3px;margin-top:10px;"><strong>Comment s'habiller :</strong> ${info.clothing}</p>
       <div class="forecast-note" style="display:flex;gap:12px;flex-wrap:wrap;">
@@ -1122,6 +1124,12 @@ async function loadWeatherCard(dest){
         },
       });
     }
+    const findBtn = el.querySelector('[data-wxfindflight]');
+    if(findBtn) findBtn.addEventListener('click', ()=> fetchRealFlight(dest));
+    const findDuffelBtn = el.querySelector('[data-wxfindflightduffel]');
+    if(findDuffelBtn) findDuffelBtn.addEventListener('click', ()=> fetchDuffelFlight(dest));
+    const editBtn = el.querySelector('[data-wxeditflightprice]');
+    if(editBtn) editBtn.addEventListener('click', ()=>{ dest.realFlightPrice = null; autosave(); loadWeatherCard(dest); });
   }catch(err){
     console.error(err);
     if(el) el.innerHTML = `<h3>${dest.name}</h3><p class="dash-empty">Erreur lors de la récupération de la météo.</p>`;
@@ -1583,6 +1591,7 @@ async function fetchRealFlight(dest){
       dest.realFlightAirline = best.airline;
       dest.realFlightSource = 'Travelpayouts';
       renderDestRow();
+      if(document.getElementById('wx-card-'+dest.id)) loadWeatherCard(dest);
       autosave();
       showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
     });
@@ -1614,6 +1623,7 @@ async function fetchDuffelFlight(dest){
       dest.realFlightAirline = best.airline;
       dest.realFlightSource = 'Duffel';
       renderDestRow();
+      if(document.getElementById('wx-card-'+dest.id)) loadWeatherCard(dest);
       autosave();
       showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
     });
