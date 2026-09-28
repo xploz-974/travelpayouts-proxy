@@ -470,6 +470,12 @@ input,select,textarea{font-family:inherit;}
         </div>
 
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
+          <div class="dc-head"><h3>Rechercher un prix réel, étape par étape</h3></div>
+          <p class="forecast-note" style="margin-bottom:10px;">Interroge directement Travelpayouts / Duffel pour chaque étape avion de ton itinéraire.</p>
+          <div id="ticketRealPrices" class="dash-list"></div>
+        </div>
+
+        <div class="dash-card dash-wide" style="margin-bottom:16px;">
           <div class="dc-head"><h3>Demander un devis</h3></div>
           <p class="forecast-note" style="margin-bottom:10px;">Ouvre une recherche réelle chez une compagnie ou une agence pour ton trajet complet, à comparer aux offres déjà enregistrées ci-dessous.</p>
           <div id="ticketQuoteLinks" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
@@ -1731,6 +1737,7 @@ async function fetchRealFlight(dest){
       dest.realFlightAirline = best.airline;
       dest.realFlightSource = 'Travelpayouts';
       renderDestRow();
+      renderTicketRealPrices();
       autosave();
       showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
     });
@@ -1762,6 +1769,7 @@ async function fetchDuffelFlight(dest){
       dest.realFlightAirline = best.airline;
       dest.realFlightSource = 'Duffel';
       renderDestRow();
+      renderTicketRealPrices();
       autosave();
       showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
     });
@@ -4770,7 +4778,35 @@ function totalTicketsCostForTraveler(t){
   return state.flightTickets.filter(tk=> ticketAppliesTo(tk,t)).reduce((s,tk)=> s+ticketPriceForTraveler(tk,t), 0);
 }
 
+function renderTicketRealPrices(){
+  const wrap = document.getElementById('ticketRealPrices');
+  if(!wrap) return;
+  const dests = [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start)).filter(d=> (d.transportModes||[]).includes('Avion'));
+  if(!dests.length){ wrap.innerHTML = '<p class="dash-empty">Aucune étape en avion pour l\'instant.</p>'; return; }
+  wrap.innerHTML = dests.map(d=> `
+    <div class="dash-row" style="flex-wrap:wrap;gap:8px;" data-ticketprice-row="${d.id}">
+      <span>${d.name}${d.iata?' ('+d.iata+')':''}</span>
+      ${d.realFlightPrice
+        ? `<b>${d.realFlightPrice}€/pers. · ${d.realFlightAirline} <span style="font-weight:400;color:var(--ink-soft);font-size:10px;">(${d.realFlightSource||'?'})</span> <button class="link-btn" style="font-size:10px;" data-tpeditflightprice="${d.id}">modifier</button></b>`
+        : `<span><button class="link-btn" style="font-size:11px;" data-tpfindflight="${d.id}">Travelpayouts →</button> <button class="link-btn" style="font-size:11px;" data-tpfindflightduffel="${d.id}">Duffel →</button></span>`}
+    </div>
+  `).join('');
+  wrap.querySelectorAll('[data-tpfindflight]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const dest = state.destinations.find(x=>x.id===btn.dataset.tpfindflight);
+    if(dest) fetchRealFlight(dest);
+  }));
+  wrap.querySelectorAll('[data-tpfindflightduffel]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const dest = state.destinations.find(x=>x.id===btn.dataset.tpfindflightduffel);
+    if(dest) fetchDuffelFlight(dest);
+  }));
+  wrap.querySelectorAll('[data-tpeditflightprice]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const dest = state.destinations.find(x=>x.id===btn.dataset.tpeditflightprice);
+    if(dest){ delete dest.realFlightPrice; autosave(); renderTicketRealPrices(); }
+  }));
+}
+
 function renderTickets(){
+  renderTicketRealPrices();
   const list = document.getElementById('ticketsList');
   const linksWrap = document.getElementById('ticketQuoteLinks');
   if(!list || !linksWrap) return;
