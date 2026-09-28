@@ -141,6 +141,7 @@ input,select,textarea{font-family:inherit;}
 .kid-stop.origin .bubble{border-color:var(--amber);}
 .kid-stop .kid-name{font-weight:700;font-size:12.5px;margin-top:6px;}
 .kid-stop .kid-sub{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+.kid-stop .kid-country{font-size:9.5px;color:var(--ink-soft);margin-top:2px;opacity:.85;}
 .kid-link{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:70px;padding-top:14px;}
 .kid-link .line{width:100%;height:3px;border-top:3px dashed var(--line);position:relative;}
 .kid-link .icon{font-size:20px;margin-top:-14px;background:var(--paper);padding:0 4px;}
@@ -413,6 +414,7 @@ input,select,textarea{font-family:inherit;}
         </div>
 
         <div id="originBanner" class="dash-card" style="margin-bottom:16px;"></div>
+        <div id="hubReturnBanner"></div>
 
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
           <div class="dc-head"><h3>🎈 Le voyage expliqué simplement</h3></div>
@@ -3439,6 +3441,60 @@ function renderOriginBanner(){
   wireOriginPicker('ob', ()=>{ renderOriginBanner(); renderDestRow(); renderKidTimeline(); });
 }
 
+/* ============================ HUB DE VOYAGE (aller-retour international) ============================
+   Quand le voyage part d'un point fixe (ex. La Réunion) vers une porte d'entrée internationale
+   (ex. Bangkok) avec un billet aller-retour, cette première destination est le "hub" : toutes les
+   excursions suivantes (autre ville, autre pays) en repartent, mais le vol retour vers l'origine
+   part forcément du hub — pas de la dernière ville visitée. Ex. Réunion → Paris → Espagne/Bordeaux
+   → il faut revenir à Paris avant de rentrer à La Réunion, sauf billet multi-destinations.
+============================================================================================================ */
+function getTripHub(){
+  if(!state.destinations.length) return null;
+  return [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start))[0];
+}
+function getLastLeg(){
+  if(!state.destinations.length) return null;
+  return [...state.destinations].sort((a,b)=> a.end.localeCompare(b.end))[state.destinations.length-1];
+}
+function renderHubReturnBanner(){
+  const box = document.getElementById('hubReturnBanner');
+  if(!box) return;
+  const hub = getTripHub();
+  const lastLeg = getLastLeg();
+  if(!hub || !lastLeg || hub.id === lastLeg.id || (hub.name===lastLeg.name && hub.country===lastLeg.country)){
+    box.innerHTML = '';
+    return;
+  }
+  if(state.settings.hubWarningDismissedFor === lastLeg.id){ box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="dash-card" style="margin-bottom:16px;background:var(--amber-soft);border-color:#e6cd9b;">
+      <div class="dc-head"><h3>✈️ Pense au vol retour</h3></div>
+      <p class="dc-sub">Ton itinéraire arrive d'abord à <b>${hub.name}${hub.iata?' ('+hub.iata+')':''}</b> — c'est probablement de là que part ton vol retour${state.settings.originIata?' vers '+state.settings.originIata:''} (billet aller-retour classique). Ta dernière étape est <b>${lastLeg.name}</b> : il faudra repasser par ${hub.name} avant de rentrer, sauf si tu as un billet multi-destinations.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <button class="btn small" id="hub-add-return-btn">+ Ajouter le retour vers ${hub.name}</button>
+        <button class="btn ghost small" id="hub-dismiss-btn">J'ai un billet multi-destinations, ignorer</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('hub-add-return-btn').addEventListener('click', ()=>{
+    const start = new Date(new Date(lastLeg.end).getTime()+86400000).toISOString().slice(0,10);
+    const end = new Date(new Date(start).getTime()+86400000).toISOString().slice(0,10);
+    const id = 'd'+Date.now();
+    state.destinations.push({id, name:hub.name, country:hub.country, start, end, transport:'Avion', transportModes:['Avion'], iata:hub.iata, lat:hub.lat, lon:hub.lon, timezone:hub.timezone});
+    const dayId = id+'-'+start;
+    state.days.push({id:dayId, destId:id, destName:hub.name, date:start});
+    state.placements[dayId] = [];
+    renderAll();
+    autosave();
+    showToast(`Étape retour vers ${hub.name} ajoutée ✓`);
+  });
+  document.getElementById('hub-dismiss-btn').addEventListener('click', ()=>{
+    state.settings.hubWarningDismissedFor = lastLeg.id;
+    autosave();
+    renderHubReturnBanner();
+  });
+}
+
 /* ============================ FRISE ILLUSTRÉE (pour expliquer à un enfant) ============================
    Une ligne simple avec des bulles et de gros émojis : maison de départ → moyen de
    transport → ville 1 → moyen de transport → ville 2 ... Pas de texte compliqué,
@@ -3463,11 +3519,13 @@ function renderKidTimeline(){
 
   const originAirport = state.settings.originIata && AIRPORT_DATA.byIata ? AIRPORT_DATA.byIata[state.settings.originIata] : null;
   const originLabel = originAirport ? originAirport.city : 'La maison';
+  const originSub = state.settings.originIata ? `<div class="kid-country">${state.settings.originIata}</div>` : '';
   let html = `
     <div class="kid-stop origin">
       <div class="bubble">🏠</div>
       <div class="kid-name">${originLabel}</div>
       <div class="kid-sub">On part d'ici !</div>
+      ${originSub}
     </div>
   `;
 
@@ -3483,9 +3541,32 @@ function renderKidTimeline(){
         <div class="bubble">📍</div>
         <div class="kid-name">${d.name}</div>
         <div class="kid-sub">${kidDateLabel(d)}</div>
+        <div class="kid-country">${d.country}${d.iata ? ' · '+d.iata : ''}</div>
       </div>
     `;
   });
+
+  // Vol retour classique = billet aller-retour depuis le "hub" (première destination du
+  // voyage) : si la dernière étape n'est pas le hub, on repasse forcément par là avant de
+  // rentrer — on le montre ici même si cette étape retour n'a pas encore été ajoutée pour de
+  // vrai (voir le bandeau "Pense au vol retour" au-dessus de l'itinéraire pour l'ajouter).
+  const hub = dests[0];
+  const lastLeg = dests[dests.length-1];
+  const needsHubReturn = hub && lastLeg && hub.id !== lastLeg.id && !(hub.name===lastLeg.name && hub.country===lastLeg.country);
+  if(needsHubReturn){
+    html += `
+      <div class="kid-link">
+        <div class="line"><span class="icon">✈️</span></div>
+        <div class="kid-label">Retour vers ${hub.name} pour le vol</div>
+      </div>
+      <div class="kid-stop">
+        <div class="bubble">📍</div>
+        <div class="kid-name">${hub.name}</div>
+        <div class="kid-sub">Étape retour</div>
+        <div class="kid-country">${hub.country}${hub.iata ? ' · '+hub.iata : ''}</div>
+      </div>
+    `;
+  }
 
   html += `
     <div class="kid-link">
@@ -3496,6 +3577,7 @@ function renderKidTimeline(){
       <div class="bubble">🏠</div>
       <div class="kid-name">${originLabel}</div>
       <div class="kid-sub">On rentre !</div>
+      ${originSub}
     </div>
   `;
 
@@ -3553,6 +3635,7 @@ async function checkRouteFeasibility(originIata, destIata, destCityLabel){
    petite mécanique qui pose les questions dans l'ordre et enchaîne les étapes.
 ============================================================================================ */
 let wizard = null; // { travelersTarget, travelersCreated, groupId, destCount }
+let pendingDestPreselect = null; // { country, cityName } — pré-sélection venant d'une suggestion cliquée
 
 function wizardProgressHTML(step){
   const steps = ['Qui part ?', "D'où ?", 'Où va-t-on ?', 'Les voyageurs'];
@@ -3615,12 +3698,14 @@ function wizardAskAnotherDestination(){
     ${wizardProgressHTML(2)}
     <h3>${funLines[wizard.destCount % funLines.length]}</h3>
     <div class="sub">✅ ${wizard.destCount} destination${wizard.destCount>1?'s':''} déjà ajoutée${wizard.destCount>1?'s':''}. Ajoute-en une de plus, ou passe à la suite si ton itinéraire est complet.</div>
+    <div id="wz-suggestions"></div>
     <div class="modal-actions">
       <button class="btn ghost small" id="wz-no-more-dest">Non, c'est tout →</button>
       <button class="btn small" id="wz-more-dest">+ Ajouter une ville</button>
     </div>
   `;
   document.getElementById('overlay').classList.add('show');
+  renderWizardDestSuggestions();
   document.getElementById('wz-more-dest').addEventListener('click', ()=>{ closeModal(); document.getElementById('addDestBtn').click(); });
   document.getElementById('wz-no-more-dest').addEventListener('click', ()=>{
     closeModal();
@@ -3633,6 +3718,49 @@ function wizardFinish(){
   wizard = null;
   switchView('dashboard');
   showToast('🎉 Ton voyage est prêt ! Explore les onglets pour affiner chaque détail — rien n\'est figé.');
+}
+
+/* Suggestions après une destination : villes internes du même pays (excursion, ex. Bangkok
+   -> Phuket ou Koh Samui) et autres pays accessibles en direct depuis là où on est déjà —
+   pour éviter de deviner et taper le nom d'une ville/pays au hasard. */
+async function renderWizardDestSuggestions(){
+  const box = document.getElementById('wz-suggestions');
+  if(!box) return;
+  const lastLeg = getLastLeg();
+  if(!lastLeg){ box.innerHTML = ''; return; }
+  const visitedCityKeys = new Set(state.destinations.map(d=> d.name+'|'+d.country));
+  const visitedCountries = new Set(state.destinations.map(d=> d.country));
+
+  const internalCities = (GEO_DATA[lastLeg.country]?.cities || []).filter(c=> !visitedCityKeys.has(c.name+'|'+lastLeg.country));
+
+  box.innerHTML = `
+    ${internalCities.length ? `
+      <p class="forecast-note" style="margin-top:4px;">🏝️ Autres villes de ${lastLeg.country} :
+        ${internalCities.map(c=>`<button class="link-btn" data-sugg-internal="${c.name}">${c.name}</button>`).join(' · ')}
+      </p>` : ''}
+    <p class="forecast-note" id="wz-sugg-external"></p>
+  `;
+  box.querySelectorAll('[data-sugg-internal]').forEach(btn=> btn.addEventListener('click', ()=>{
+    pendingDestPreselect = { country: lastLeg.country, cityName: btn.dataset.suggInternal };
+    closeModal();
+    document.getElementById('addDestBtn').click();
+  }));
+
+  if(!lastLeg.iata) return;
+  try{
+    const reachableCountries = await getReachableCountries(lastLeg.iata);
+    const externalCountries = [...reachableCountries].filter(c=> !visitedCountries.has(c)).slice(0,6);
+    const externalEl = document.getElementById('wz-sugg-external');
+    if(externalEl && externalCountries.length){
+      externalEl.innerHTML = `🌍 Autres pays accessibles depuis ${lastLeg.iata} :
+        ${externalCountries.map(c=>`<button class="link-btn" data-sugg-external="${c}">${c}</button>`).join(' · ')}`;
+      externalEl.querySelectorAll('[data-sugg-external]').forEach(btn=> btn.addEventListener('click', ()=>{
+        pendingDestPreselect = { country: btn.dataset.suggExternal, cityName: null };
+        closeModal();
+        document.getElementById('addDestBtn').click();
+      }));
+    }
+  }catch(err){ console.error(err); }
 }
 
 document.getElementById('addDestBtn').addEventListener('click', ()=>{
@@ -3920,7 +4048,23 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
     refreshCountryOrder();
     renderKidTimeline();
   });
-  refreshCountryOrder();
+  (async ()=>{
+    await refreshCountryOrder();
+    if(pendingDestPreselect){
+      const preselect = pendingDestPreselect;
+      pendingDestPreselect = null;
+      const countrySel = document.getElementById('nd-country');
+      if(countrySel){
+        countrySel.value = preselect.country;
+        countrySel.dispatchEvent(new Event('change'));
+        if(preselect.cityName){
+          const citySel = document.getElementById('nd-city');
+          const idx = cityGeoResults.findIndex(c=> c.name === preselect.cityName);
+          if(citySel && idx >= 0){ citySel.value = String(idx); citySel.dispatchEvent(new Event('change')); }
+        }
+      }
+    }
+  })();
 
   document.getElementById('nd-country').addEventListener('change', e=>{
     document.getElementById('nd-city-search').value = '';
@@ -5138,6 +5282,7 @@ function renderAll(){
   renderTopChips();
   renderTripDateRange();
   renderOriginBanner();
+  renderHubReturnBanner();
   renderKidTimeline();
   renderDestRow();
   renderLegs();
