@@ -150,8 +150,14 @@ input,select,textarea{font-family:inherit;}
 .kid-link .kid-label{font-size:9.5px;color:var(--ink-soft);margin-top:4px;text-align:center;}
 .dest-card{
   min-width:150px;background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);
-  padding:12px 14px;box-shadow:var(--shadow);
+  padding:12px 14px;box-shadow:var(--shadow);cursor:grab;transition:opacity .15s,border-color .15s;
 }
+.dest-card.dragging{opacity:.4;}
+.dest-card.drop-before{box-shadow:-3px 0 0 var(--sunset), var(--shadow);}
+.dest-card.drop-after{box-shadow:3px 0 0 var(--sunset), var(--shadow);}
+.dest-drag-handle{color:var(--ink-soft);font-size:13px;margin-right:5px;user-select:none;}
+.dest-nights-edit{margin-top:5px;font-size:10.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.dest-nights-edit input{width:48px;padding:3px 5px;border:1px solid var(--line);border-radius:6px;font-size:11.5px;text-align:center;}
 .dest-card .name{font-family:'Fraunces',serif;font-weight:600;font-size:15px;}
 .dest-card .dates{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
 .dest-card .transport{font-size:11.5px;color:var(--teal-dark);margin-top:6px;display:flex;align-items:center;gap:5px;}
@@ -1994,11 +2000,12 @@ function renderDestRow(){
     const key = d.name+'|'+d.country;
     const repeated = cityCounts[key] > 1;
     return `
-    <div class="dest-card deletable">
+    <div class="dest-card deletable" draggable="true" data-destid="${d.id}">
       <button class="del-x" data-deldest="${d.id}" title="Supprimer cette destination">✕</button>
-      <div class="name">${d.name}${d.iata ? ` <span style="font-weight:400;color:var(--ink-soft);font-size:11px;">(${d.iata})</span>` : ''}</div>
+      <div class="name"><span class="dest-drag-handle" title="Glisser pour réordonner les étapes">⠿</span>${d.name}${d.iata ? ` <span style="font-weight:400;color:var(--ink-soft);font-size:11px;">(${d.iata})</span>` : ''}</div>
       ${repeated ? `<div style="font-size:10.5px;color:var(--teal-dark);font-weight:600;">🔗 ${d.name} visité ${cityCounts[key]} fois dans ce voyage</div>` : ''}
-      <div class="dates">${fmtDate(d.start)} → ${fmtDate(d.end)} <button class="link-btn" style="font-size:10.5px;" data-editdates="${d.id}">✏️ modifier</button></div>
+      <div class="dates">${fmtDate(d.start)} → ${fmtDate(d.end)} <button class="link-btn" style="font-size:10.5px;" data-editdates="${d.id}">✏️ dates précises</button></div>
+      <div class="dest-nights-edit"><label style="font-weight:600;color:var(--ink-soft);">Nuits ici :</label> <input type="number" min="1" class="dest-nights-input" data-destid="${d.id}" value="${Math.max(1, Math.round((new Date(d.end)-new Date(d.start))/86400000))}"> <span style="color:var(--ink-soft);">— les étapes suivantes s'ajustent automatiquement</span></div>
       ${(()=>{ const tz = tzDiffInfo(d.timezone); if(!tz || tz.sameZone) return ''; return `<div style="font-size:10.5px;color:var(--amber);font-weight:600;margin-top:2px;" title="Il est ${localTimeInTz(d.timezone)} là-bas en ce moment">🕐 ${tz.label} par rapport à chez toi</div>`; })()}
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;">
         <span id="dest-routetype-${d.id}">${routeTypeBadgeHTML(d.routeType)}</span>
@@ -2039,6 +2046,19 @@ function renderDestRow(){
     e.stopPropagation();
     openEditDestDatesModal(btn.dataset.editdates);
   }));
+  el.querySelectorAll('.dest-nights-input').forEach(inp=> inp.addEventListener('click', e=> e.stopPropagation()));
+  el.querySelectorAll('.dest-nights-input').forEach(inp=> inp.addEventListener('change', ()=>{
+    const dest = state.destinations.find(d=>d.id===inp.dataset.destid);
+    if(!dest) return;
+    const n = Math.max(1, parseInt(inp.value)||1);
+    const newEnd = new Date(new Date(dest.start).getTime() + n*86400000).toISOString().slice(0,10);
+    shiftDestinationDates(dest, dest.start, newEnd);
+    resequenceDestinations(state.destinations.map(x=>x.id));
+    renderAll();
+    autosave();
+    showToast(`${dest.name} : ${n} nuit${n>1?'s':''} — étapes suivantes ajustées ✓`);
+  }));
+  attachDestDrag(el);
   tripModeLabel();
 
   // Calcule discrètement le badge Direct/Avec escale — et le recalcule si l'aéroport
@@ -2054,6 +2074,89 @@ function renderDestRow(){
       const badgeEl = document.getElementById('dest-routetype-'+d.id);
       if(badgeEl) badgeEl.innerHTML = routeTypeBadgeHTML(type);
     }
+  });
+}
+
+/* ============================ RÉORGANISATION DE L'ITINÉRAIRE ============================
+   Les destinations sont affichées dans l'ordre du tableau state.destinations (pas triées
+   par date) : cet ordre EST la séquence du voyage. Glisser une carte pour la réordonner,
+   ou changer directement le nombre de nuits d'une étape, recalcule en cascade les dates de
+   toutes les étapes suivantes (chacune garde son propre nombre de nuits, seul son
+   positionnement dans le temps bouge) — pour éviter des dates qui se chevauchent entre deux
+   destinations (ex. une excursion vers une ville quand on ne change pas d'hébergement de
+   base) sans que le voyageur ait à recalculer les dates à la main.
+================================================================================================ */
+function shiftDestinationDates(dest, newStart, newEnd){
+  // Conserve les hébergements déjà glissés sur les jours, par position (jour 1 reste jour 1),
+  // même si les dates exactes changent — même logique que openEditDestDatesModal.
+  const oldDayIds = state.days.filter(d=>d.destId===dest.id).sort((a,b)=> a.date.localeCompare(b.date)).map(d=>d.id);
+  const placementsByIndex = oldDayIds.map(id=> state.placements[id] || []);
+  oldDayIds.forEach(id=> delete state.placements[id]);
+  state.days = state.days.filter(d=>d.destId!==dest.id);
+  dest.start = newStart; dest.end = newEnd;
+  let cur = new Date(newStart); const endD = new Date(newEnd); let idx = 0;
+  while(cur < endD){
+    const dayId = dest.id+'-'+cur.toISOString().slice(0,10);
+    state.days.push({ id:dayId, destId:dest.id, destName:dest.name, date:cur.toISOString().slice(0,10) });
+    state.placements[dayId] = placementsByIndex[idx] || [];
+    cur.setDate(cur.getDate()+1);
+    idx++;
+  }
+}
+
+function resequenceDestinations(orderedIds){
+  if(!orderedIds.length) return;
+  const first = state.destinations.find(d=>d.id===orderedIds[0]);
+  if(!first) return;
+  let cur = new Date(first.start); // ancre : la toute première étape garde sa date de départ
+  orderedIds.forEach(id=>{
+    const dest = state.destinations.find(d=>d.id===id);
+    if(!dest) return;
+    const nights = Math.max(1, Math.round((new Date(dest.end)-new Date(dest.start))/86400000));
+    const newStart = cur.toISOString().slice(0,10);
+    cur = new Date(cur.getTime() + nights*86400000);
+    const newEnd = cur.toISOString().slice(0,10);
+    if(newStart !== dest.start || newEnd !== dest.end){
+      shiftDestinationDates(dest, newStart, newEnd);
+    }
+  });
+}
+
+function attachDestDrag(container){
+  let draggedId = null;
+  container.querySelectorAll('.dest-card[draggable="true"]').forEach(card=>{
+    card.addEventListener('dragstart', e=>{
+      draggedId = card.dataset.destid;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(()=> card.classList.add('dragging'), 0);
+    });
+    card.addEventListener('dragend', ()=> card.classList.remove('dragging'));
+    card.addEventListener('dragover', e=>{
+      e.preventDefault();
+      if(card.dataset.destid === draggedId) return;
+      const rect = card.getBoundingClientRect();
+      const before = (e.clientX - rect.left) < rect.width/2;
+      card.classList.toggle('drop-before', before);
+      card.classList.toggle('drop-after', !before);
+    });
+    card.addEventListener('dragleave', ()=> card.classList.remove('drop-before','drop-after'));
+    card.addEventListener('drop', e=>{
+      e.preventDefault();
+      card.classList.remove('drop-before','drop-after');
+      if(!draggedId || draggedId === card.dataset.destid) return;
+      const fromIdx = state.destinations.findIndex(d=>d.id===draggedId);
+      if(fromIdx===-1) return;
+      const rect = card.getBoundingClientRect();
+      const before = (e.clientX - rect.left) < rect.width/2;
+      const [moved] = state.destinations.splice(fromIdx,1);
+      let toIdx = state.destinations.findIndex(d=>d.id===card.dataset.destid);
+      if(toIdx===-1) toIdx = state.destinations.length;
+      state.destinations.splice(toIdx + (before?0:1), 0, moved);
+      resequenceDestinations(state.destinations.map(d=>d.id));
+      renderAll();
+      autosave();
+      showToast('Ordre des étapes mis à jour — dates recalculées ✓');
+    });
   });
 }
 
@@ -2088,22 +2191,7 @@ function openEditDestDatesModal(destId){
     const newStart = document.getElementById('ed-start').value;
     const newEnd = document.getElementById('ed-end').value;
     if(!newStart || !newEnd || new Date(newEnd) <= new Date(newStart)){ showToast('Vérifie les dates : le départ doit être après l\'arrivée.'); return; }
-
-    // sauvegarde les hébergements déjà placés, par position (jour 1, jour 2...) plutôt que par date exacte
-    const oldDayIds = state.days.filter(d=>d.destId===destId).sort((a,b)=> a.date.localeCompare(b.date)).map(d=>d.id);
-    const placementsByIndex = oldDayIds.map(id=> state.placements[id] || []);
-    oldDayIds.forEach(id=> delete state.placements[id]);
-    state.days = state.days.filter(d=>d.destId!==destId);
-
-    dest.start = newStart; dest.end = newEnd;
-    let cur = new Date(newStart); const endD = new Date(newEnd); let idx = 0;
-    while(cur < endD){
-      const dayId = destId+'-'+cur.toISOString().slice(0,10);
-      state.days.push({ id:dayId, destId, destName:dest.name, date:cur.toISOString().slice(0,10) });
-      state.placements[dayId] = placementsByIndex[idx] || [];
-      cur.setDate(cur.getDate()+1);
-      idx++;
-    }
+    shiftDestinationDates(dest, newStart, newEnd);
     closeModal();
     renderAll();
     autosave();
