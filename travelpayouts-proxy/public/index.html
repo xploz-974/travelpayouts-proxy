@@ -1861,6 +1861,7 @@ function renderDestRow(){
       ${(()=>{ const tz = tzDiffInfo(d.timezone); if(!tz || tz.sameZone) return ''; return `<div style="font-size:10.5px;color:var(--amber);font-weight:600;margin-top:2px;" title="Il est ${localTimeInTz(d.timezone)} là-bas en ce moment">🕐 ${tz.label} par rapport à chez toi</div>`; })()}
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;">
         <span id="dest-routetype-${d.id}">${routeTypeBadgeHTML(d.routeType)}</span>
+        ${d.stopover ? `<span class="wx-badge badge-med" style="font-size:10px;" title="Escale déclarée par toi à l'ajout de cette étape">✈️ via ${d.stopover}</span>` : ''}
       </div>
       ${transportChipsHTML(d.transportModes)}
       ${d.realFlightPrice ? `<div class="transport" style="color:var(--teal-dark);font-weight:600;margin-top:4px;">${d.realFlightPrice}€/pers. réel · ${d.realFlightAirline} <span style="font-weight:400;color:var(--ink-soft);font-size:10px;">(${d.realFlightSource||'?'})</span> <button class="link-btn" style="font-size:10px;" data-editflightprice="${d.id}">modifier</button></div>` : ((d.transportModes||[]).includes('Avion') ? `<div style="display:flex;gap:8px;margin-top:6px;"><button class="link-btn" style="font-size:11px;" data-findflight="${d.id}">Vol réel (Travelpayouts) →</button><button class="link-btn" style="font-size:11px;" data-findflightduffel="${d.id}">Vol Duffel →</button></div>` : '')}
@@ -3558,8 +3559,8 @@ function startWizard(){
     ${wizardProgressHTML(0)}
     <h3>🧭 On prépare ton voyage !</h3>
     <div class="sub">Quelques questions rapides, puis on rentre dans le détail étape par étape. Ça prend 2 minutes ⏱️</div>
-    <div class="field"><label>🎒 Vous êtes combien à partir, en tout ?</label><input id="wz-count" type="number" min="1" value="1"></div>
-    <div class="field"><label>👪 Qui compose ce voyage ? <span style="font-weight:400;color:var(--ink-soft);">(sépare par une virgule pour créer plusieurs groupes)</span></label><input id="wz-groupname" placeholder="Ex. Famille Dupont, Famille Martin, Les copains de Léa…"></div>
+    <div class="field"><label>🎒 Vous êtes combien à partir, en tout ?</label><input id="wz-count" type="number" min="1" value="1"><p class="forecast-note" id="wz-count-hint" style="margin-top:6px;"></p></div>
+    <div class="field"><label>👪 Qui compose ce voyage ? <span id="wz-groupname-hint" style="font-weight:400;color:var(--ink-soft);">(sépare par une virgule pour créer plusieurs groupes)</span></label><input id="wz-groupname" placeholder="Ex. Famille Dupont, Famille Martin, Les copains de Léa…"></div>
     <div class="field">
       <label>🏠 D'où partez-vous ? <span style="font-weight:400;color:var(--ink-soft);">(tu peux le faire plus tard si tu ne sais pas encore)</span></label>
       ${originPickerHTML('wz')}
@@ -3572,6 +3573,17 @@ function startWizard(){
   document.getElementById('overlay').classList.add('show');
   document.getElementById('modalClose').addEventListener('click', ()=>{ wizard = null; closeModal(); });
   wireOriginPicker('wz', ()=>{});
+  function updateWizardCountHint(){
+    const n = Math.max(1, parseInt(document.getElementById('wz-count').value) || 1);
+    const hint = document.getElementById('wz-count-hint');
+    const groupHint = document.getElementById('wz-groupname-hint');
+    if(n === 1){ hint.textContent = '🧍 Voyage en solo — un seul groupe suffit.'; groupHint.textContent = '(facultatif pour un solo)'; }
+    else if(n === 2){ hint.textContent = '💑 Un voyage à deux.'; groupHint.textContent = '(un seul groupe suffit pour un couple)'; }
+    else if(n <= 6){ hint.textContent = '👨‍👩‍👧 Petit groupe — une famille ou une bande d\'amis.'; groupHint.textContent = '(sépare par une virgule si plusieurs familles/couples)'; }
+    else { hint.textContent = `👨‍👩‍👧‍👦 Grand groupe (${n} personnes) — pense à bien séparer chaque famille ou couple ci-dessous, ça facilitera la suite.`; groupHint.textContent = '(sépare chaque famille/couple par une virgule — important pour un grand groupe)'; }
+  }
+  document.getElementById('wz-count').addEventListener('input', updateWizardCountHint);
+  updateWizardCountHint();
   document.getElementById('wz-start-dest').addEventListener('click', ()=>{
     const count = Math.max(1, parseInt(document.getElementById('wz-count').value) || 1);
     const rawNames = document.getElementById('wz-groupname').value.split(',').map(s=>s.trim()).filter(Boolean);
@@ -3709,6 +3721,10 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
         `).join('')}
       </div>
       <p class="forecast-note" style="margin-top:6px;">Le dernier choix est mémorisé pour la prochaine étape — change-le seulement si besoin.</p>
+      <div id="nd-stopover-field" style="display:${lastModes.includes('Avion')?'block':'none'};margin-top:10px;">
+        <label style="font-size:12.5px;">Vol avec escale ? <span style="font-weight:400;color:var(--ink-soft);">(facultatif)</span></label>
+        <input id="nd-stopover" placeholder="Ex. Doha, Dubaï…" style="max-width:220px;">
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn ghost small" id="modalClose">Annuler</button>
@@ -3883,6 +3899,8 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
   }
   document.querySelectorAll('.transport-chip .nd-transport-cb').forEach(cb=> cb.addEventListener('change', ()=>{
     cb.closest('.transport-chip').classList.toggle('selected', cb.checked);
+    const avionChecked = document.querySelector('.nd-transport-cb[value="Avion"]').checked;
+    document.getElementById('nd-stopover-field').style.display = avionChecked ? 'block' : 'none';
   }));
 
   wireOriginPicker('ndorig', (iata)=>{
@@ -3930,8 +3948,9 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
     const transportModes = Array.from(document.querySelectorAll('.nd-transport-cb:checked')).map(cb=>cb.value);
     const transport = transportModes.length ? transportModes.join(' + ') : 'À définir';
     if(transportModes.length) state.settings.lastTransportModes = transportModes;
+    const stopover = transportModes.includes('Avion') ? document.getElementById('nd-stopover').value.trim() : '';
     const id = 'd'+Date.now();
-    state.destinations.push({id, name, country, start, end, transport, transportModes, iata, lat:city.latitude, lon:city.longitude, timezone: currentDestTimezone()});
+    state.destinations.push({id, name, country, start, end, transport, transportModes, iata, lat:city.latitude, lon:city.longitude, timezone: currentDestTimezone(), stopover: stopover || null});
 
     const rnd = seedRand(id.length*13 + id.charCodeAt(1));
     if(!state.settings.realDataOnly){
