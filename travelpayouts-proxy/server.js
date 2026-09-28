@@ -26,11 +26,15 @@ import { hotelsRouter } from './src/routes/hotels.js';
 import { flightsRouter } from './src/routes/flights.js';
 import { duffelRouter } from './src/routes/duffel.js';
 import { bookingRouter } from './src/routes/booking.js';
+import { backupRouter } from './src/routes/backup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.use(cors()); // en production, remplace cors() par cors({origin:'https://ton-domaine.com'})
+// Le dossier de voyage complet (documents d'identité en photos incluses, en base64)
+// peut atteindre plusieurs Mo — limite généreuse pour la sauvegarde cloud (/api/backup).
+app.use(express.json({ limit: '25mb' }));
 
 warnMissingConfig();
 
@@ -45,6 +49,7 @@ app.use(hotelsRouter);
 app.use(flightsRouter);
 app.use(duffelRouter);
 app.use(bookingRouter);
+app.use(backupRouter);
 
 app.listen(PORT, () => {
   console.log(`Serveur relais Travelpayouts démarré sur http://localhost:${PORT}`);
