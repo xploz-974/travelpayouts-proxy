@@ -327,7 +327,7 @@ input,select,textarea{font-family:inherit;}
     </button>
     <button class="nav-item" data-view="meteo">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19a4.5 4.5 0 000-9 6 6 0 10-11.4 3M9 13a4 4 0 104 4"/></svg>
-      <span class="label">Météo &amp; prix</span>
+      <span class="label">Météo</span>
     </button>
     <button class="nav-item" data-view="activites">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/><path d="M3 12l1.5 1.5M21 3l-2 2"/><circle cx="7" cy="7" r="2"/></svg>
@@ -384,7 +384,6 @@ input,select,textarea{font-family:inherit;}
         <button class="btn ghost small" id="settingsBtn" title="Configurer la connexion aux données réelles">⚙ <span class="label-text">Paramètres</span></button>
         <button class="btn ghost small" id="resetBtn" title="Repartir d'un dossier vierge">↺ <span class="label-text">Réinitialiser</span></button>
         <button class="btn ghost small" id="historyBtn" title="Voir les sauvegardes précédentes">🕐 <span class="label-text">Historique</span></button>
-        <button class="btn small" id="saveBtn" title="Sauvegarder l'état actuel">💾 <span class="label-text">Sauvegarder</span></button>
       </div>
     </div>
 
@@ -494,8 +493,8 @@ input,select,textarea{font-family:inherit;}
       <div class="view" id="view-meteo">
         <div class="section-head">
           <div>
-            <h2>Météo &amp; indicateur de prix</h2>
-            <p>Données météo réelles (Open-Meteo, gratuit, sans clé) — prévision en direct si le départ est proche, sinon moyenne calculée sur les 5 dernières années pour ces dates précises.</p>
+            <h2>Météo</h2>
+            <p>Météo réelle (Open-Meteo, gratuit, sans clé) pour les dates précises de chaque étape de ton voyage — prévision en direct si le départ est proche, sinon moyenne calculée sur les 5 dernières années pour ces mêmes dates.</p>
           </div>
           <button class="btn ghost small" id="refreshWeatherBtn">🔄 Actualiser la météo</button>
         </div>
@@ -1088,7 +1087,6 @@ async function loadWeatherCard(dest){
       if(retryBtn) retryBtn.addEventListener('click', ()=>{ delete REALWX_CACHE[cacheKey]; el.innerHTML = '<p class="dash-empty">Nouvelle tentative…</p>'; loadWeatherCard(dest); });
       return;
     }
-    const wEntry = state.weather.find(w=>w.destId===dest.id) || {};
     el.innerHTML = `
       <h3>${dest.name}</h3>
       <div class="period">${fmtDate(dest.start)} → ${fmtDate(dest.end)} · ${info.source}</div>
@@ -1096,9 +1094,6 @@ async function loadWeatherCard(dest){
       <div class="wx-row"><span>Probabilité de pluie</span><b>${info.rainProb}%</b></div>
       <div class="wx-row"><span>Humidité moyenne</span><b>${info.humidity!=null ? info.humidity+'%' : 'n/d'}</b></div>
       <div class="wx-row"><span>Ensoleillement</span><b>${info.sunshineHours!=null ? info.sunshineHours+'h/jour' : 'n/d'}</b></div>
-      ${wEntry.priceLevel ? `<div class="wx-row"><span>Indicateur tarifaire</span><span class="wx-badge ${badgeClass(wEntry.priceLevel)}">${priceLabel(wEntry.priceLevel)}</span></div>` : ''}
-      ${dest.realFlightPrice ? `<div class="wx-row"><span>Vol réel</span><b>${dest.realFlightPrice}€/pers. · ${dest.realFlightAirline} <span style="font-weight:400;color:var(--ink-soft);font-size:10px;">(${dest.realFlightSource||'?'})</span> <button class="link-btn" style="font-size:10px;" data-wxeditflightprice="${dest.id}">modifier</button></b></div>`
-        : ((dest.transportModes||[]).includes('Avion') ? `<div class="wx-row" style="flex-wrap:wrap;gap:8px;"><span>Vol réel</span><span><button class="link-btn" style="font-size:11px;" data-wxfindflight="${dest.id}">Travelpayouts →</button> <button class="link-btn" style="font-size:11px;" data-wxfindflightduffel="${dest.id}">Duffel →</button></span></div>` : '')}
       <div style="margin-top:10px;"><canvas id="wx-chart-${dest.id}" height="130"></canvas></div>
       <p style="font-size:12.3px;margin-top:10px;"><strong>Comment s'habiller :</strong> ${info.clothing}</p>
       <div class="forecast-note" style="display:flex;gap:12px;flex-wrap:wrap;">
@@ -1126,12 +1121,6 @@ async function loadWeatherCard(dest){
         },
       });
     }
-    const findBtn = el.querySelector('[data-wxfindflight]');
-    if(findBtn) findBtn.addEventListener('click', ()=> fetchRealFlight(dest));
-    const findDuffelBtn = el.querySelector('[data-wxfindflightduffel]');
-    if(findDuffelBtn) findDuffelBtn.addEventListener('click', ()=> fetchDuffelFlight(dest));
-    const editBtn = el.querySelector('[data-wxeditflightprice]');
-    if(editBtn) editBtn.addEventListener('click', ()=>{ dest.realFlightPrice = null; autosave(); loadWeatherCard(dest); });
   }catch(err){
     console.error(err);
     if(el) el.innerHTML = `<h3>${dest.name}</h3><p class="dash-empty">Erreur lors de la récupération de la météo.</p>`;
@@ -1178,6 +1167,39 @@ function tzDiffInfo(destTz){
 function localTimeInTz(tz){
   try{ return new Date().toLocaleTimeString('fr-FR', { timeZone: tz, hour:'2-digit', minute:'2-digit' }); }
   catch(err){ return '—'; }
+}
+function localHourMinuteInTz(tz){
+  try{
+    const parts = new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:false }).split(':');
+    return { h: parseInt(parts[0],10), m: parseInt(parts[1],10) };
+  }catch(err){ return { h:0, m:0 }; }
+}
+
+/* Petite horloge analogique en SVG inline — pas de dépendance externe, juste des aiguilles
+   positionnées par trigonométrie à partir de l'heure locale du fuseau donné. */
+function analogClockSVG(h, m, size){
+  size = size || 64;
+  const cx = size/2, cy = size/2;
+  const hourAngle = ((h % 12) + m/60) * 30;
+  const minuteAngle = m * 6;
+  const toXY = (angleDeg, len)=>{
+    const a = angleDeg * Math.PI/180;
+    return [ (cx + len*Math.sin(a)).toFixed(1), (cy - len*Math.cos(a)).toFixed(1) ];
+  };
+  const [hx,hy] = toXY(hourAngle, size*0.26);
+  const [mx,my] = toXY(minuteAngle, size*0.40);
+  const ticks = Array.from({length:12}, (_,i)=>{
+    const [x1,y1] = toXY(i*30, size*0.42);
+    const [x2,y2] = toXY(i*30, size*0.48);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#8a9aa0" stroke-width="1.5"/>`;
+  }).join('');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${(size*0.47).toFixed(1)}" fill="var(--paper-raised)" stroke="var(--line)" stroke-width="2"/>
+    ${ticks}
+    <line x1="${cx}" y1="${cy}" x2="${hx}" y2="${hy}" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="${cx}" y1="${cy}" x2="${mx}" y2="${my}" stroke="var(--teal-dark)" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="2.5" fill="var(--ink)"/>
+  </svg>`;
 }
 
 function transportChipsHTML(modes){
@@ -1593,7 +1615,6 @@ async function fetchRealFlight(dest){
       dest.realFlightAirline = best.airline;
       dest.realFlightSource = 'Travelpayouts';
       renderDestRow();
-      if(document.getElementById('wx-card-'+dest.id)) loadWeatherCard(dest);
       autosave();
       showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
     });
@@ -1625,7 +1646,6 @@ async function fetchDuffelFlight(dest){
       dest.realFlightAirline = best.airline;
       dest.realFlightSource = 'Duffel';
       renderDestRow();
-      if(document.getElementById('wx-card-'+dest.id)) loadWeatherCard(dest);
       autosave();
       showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
     });
@@ -1714,7 +1734,6 @@ function renderLegs(){
   }));
 }
 
-document.getElementById('saveBtn').addEventListener('click', ()=> createBackup());
 document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
 document.getElementById('resetBtn').addEventListener('click', ()=>{
   if(confirm('Repartir d\'un dossier vierge ? Pensez à créer une sauvegarde avant si vous voulez garder le dossier actuel.')){
@@ -1735,7 +1754,7 @@ const ALL_TABS = [
   {key:'itineraire', label:'Itinéraire'},
   {key:'billets', label:"Billets d'avion"},
   {key:'hebergements', label:'Hébergements'},
-  {key:'meteo', label:'Météo & prix'},
+  {key:'meteo', label:'Météo'},
   {key:'activites', label:'Activités & achats'},
   {key:'voyageurs', label:'Voyageurs'},
   {key:'documents', label:'Documents'},
@@ -3456,6 +3475,20 @@ function getLastLeg(){
   if(!state.destinations.length) return null;
   return [...state.destinations].sort((a,b)=> a.end.localeCompare(b.end))[state.destinations.length-1];
 }
+
+/* Résumé pour la carte "Destinations" du tableau de bord : indique le trajet aller-retour
+   (origine <-> hub) et le détail de chaque petite étape/excursion entre les deux. */
+function destinationsSummaryLabel(){
+  if(!state.destinations.length) return 'Aucune pour l\'instant';
+  const hub = getTripHub();
+  const ordered = [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start));
+  const steps = ordered.map(d=>{
+    const nights = Math.max(1, Math.round((new Date(d.end)-new Date(d.start))/86400000));
+    return `${d.name} (${nights}n)`;
+  }).join(' → ');
+  const roundTrip = hub ? `Aller-retour ${state.settings.originIata ? state.settings.originIata+' ↔ ' : '↔ '}${hub.name}${hub.iata?' ('+hub.iata+')':''}` : '';
+  return `${roundTrip}${roundTrip && steps ? ' · ' : ''}${steps}`;
+}
 function renderHubReturnBanner(){
   const box = document.getElementById('hubReturnBanner');
   if(!box) return;
@@ -4156,73 +4189,23 @@ function renderShareQrCode(){
   el.innerHTML = `<img src="${url}" alt="QR code du voyage" width="140" height="140" style="border-radius:8px;">`;
 }
 
-/* ============================ CARTES DE L'ITINÉRAIRE (dashboard) ============================
-   Un seul monde-carte ne fonctionne pas quand les étapes sont très éloignées
-   (ex. Réunion + Thaïlande) : soit tout est minuscule, soit une bonne partie
-   sort du cadre. Solution : regrouper les destinations par zone géographique
-   (distance < 3000 km = même groupe) et afficher une carte zoomée par groupe,
-   plus une vue d'ensemble globale pour le contexte général.
-   Service utilisé : staticmap.openstreetmap.de (public, gratuit, sans clé).
-================================================================================================= */
-function clusterDestinationsByRegion(points){
-  const clusters = [];
-  points.forEach(p=>{
-    let target = clusters.find(c=> c.some(q=> haversineKm(p.lat,p.lon,q.lat,q.lon) < 3000));
-    if(target) target.push(p); else clusters.push([p]);
-  });
-  return clusters;
-}
-function staticMapUrl(points, size){
-  if(!points.length) return '';
-  const lats = points.map(p=>p.lat), lons = points.map(p=>p.lon);
-  const centerLat = (Math.min(...lats)+Math.max(...lats))/2;
-  const centerLon = (Math.min(...lons)+Math.max(...lons))/2;
-  const spanLat = Math.max(...lats)-Math.min(...lats);
-  const spanLon = Math.max(...lons)-Math.min(...lons);
-  const span = Math.max(spanLat, spanLon, 0.3);
-  let zoom = 11;
-  if(span > 1) zoom = 8; if(span > 5) zoom = 6; if(span > 15) zoom = 4; if(span > 40) zoom = 3; if(span > 90) zoom = 2;
-  const markers = points.map((p,i)=> `${p.lat},${p.lon},${i===0 && p.home ? 'lightblue1':'redpin'}`).join('|');
-  return `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat},${centerLon}&zoom=${zoom}&size=${size||'400x220'}&maptype=mapnik&markers=${markers}`;
-}
-function renderItineraryMaps(){
-  const wrap = document.getElementById('dashItineraryMaps');
-  if(!wrap) return;
-  loadAirportsData(); // s'assure que les coordonnées de l'aéroport de départ sont disponibles (mise en cache)
-  const points = state.destinations.filter(d=> d.lat!=null && d.lon!=null).map(d=> ({lat:d.lat, lon:d.lon, name:d.name}));
-  const originAirport = state.settings.originIata && AIRPORT_DATA.byIata ? AIRPORT_DATA.byIata[state.settings.originIata] : null;
-  if(originAirport){
-    points.unshift({lat:originAirport.lat, lon:originAirport.lon, name:'Chez toi ('+state.settings.originIata+')', home:true});
-  }
-  if(!points.length){ wrap.innerHTML = '<p class="dash-empty">Ajoute des destinations pour voir la carte.</p>'; return; }
-
-  const clusters = clusterDestinationsByRegion(points);
-  let html = '';
-  if(clusters.length > 1){
-    html += `<p class="forecast-note" style="margin-bottom:10px;">Ton voyage couvre des zones trop éloignées pour tenir sur une seule carte lisible (ex. Réunion + Thaïlande) — voici une carte par zone, plus une vue d'ensemble.</p>`;
-    html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">`;
-    clusters.forEach(c=>{
-      html += `<div><img src="${staticMapUrl(c, '400x220')}" style="width:100%;border-radius:8px;border:1px solid var(--line);" alt="Carte"><p class="forecast-note" style="margin-top:4px;text-align:center;">${c.map(p=>p.name).join(' · ')}</p></div>`;
-    });
-    html += `</div>`;
-    html += `<p class="forecast-note" style="margin-top:10px;">Vue d'ensemble (très zoomée, juste pour le contexte) :</p><img src="${staticMapUrl(points,'700x200')}" style="width:100%;border-radius:8px;border:1px solid var(--line);" alt="Vue d'ensemble">`;
-  } else {
-    html += `<img src="${staticMapUrl(points, '700x320')}" style="width:100%;border-radius:8px;border:1px solid var(--line);" alt="Carte de l'itinéraire">`;
-  }
-  wrap.innerHTML = html;
-}
-
 function renderDashboard(){
   const grid = document.getElementById('dashGrid');
   const missingDocsTravelers = state.travelers.filter(t=> docCompleteness(t).done < docCompleteness(t).total);
   const placedCount = Object.values(state.placements).reduce((n,arr)=> n + arr.length, 0);
-  const tzDiffs = state.destinations.map(d=>({ dest:d, tz: tzDiffInfo(d.timezone) })).filter(x=> x.tz && !x.tz.sameZone);
+  const tzGroups = {};
+  state.destinations.forEach(d=>{
+    if(!d.timezone) return;
+    if(!tzGroups[d.timezone]) tzGroups[d.timezone] = { timezone:d.timezone, names:[], tz: tzDiffInfo(d.timezone) };
+    if(!tzGroups[d.timezone].names.includes(d.name)) tzGroups[d.timezone].names.push(d.name);
+  });
+  const tzDiffs = Object.values(tzGroups);
 
   grid.innerHTML = `
     <div class="dash-card">
       <div class="dc-head"><h3>Destinations</h3></div>
       <div class="dc-num">${state.destinations.length}</div>
-      <div class="dc-sub">${state.destinations.length ? state.destinations.map(d=>d.name).join(' · ') : 'Aucune pour l\'instant'}</div>
+      <div class="dc-sub">${destinationsSummaryLabel()}</div>
       <button class="btn ghost small dc-shortcut" data-goto="itineraire">Voir l'itinéraire →</button>
     </div>
 
@@ -4253,14 +4236,13 @@ function renderDashboard(){
     </div>
 
     <div class="dash-card">
-      <div class="dc-head"><h3>Météo &amp; prix</h3></div>
+      <div class="dc-head"><h3>Météo</h3></div>
       <div class="dash-list">
         ${state.destinations.length ? state.destinations.map(d=>{
           const cacheKey = `${d.id}|${d.start}|${d.end}`;
           const real = REALWX_CACHE[cacheKey];
-          const wEntry = state.weather.find(w=>w.destId===d.id) || {};
-          const tempLabel = real ? `${real.tempMin}°–${real.tempMax}°C` : (wEntry.tempAvg ? `~${wEntry.tempAvg}°C (à confirmer)` : '—');
-          return `<div class="dash-row"><span>${d.name} · ${tempLabel}</span>${wEntry.priceLevel ? `<span class="wx-badge ${badgeClass(wEntry.priceLevel)}" style="font-size:10px;">${priceLabel(wEntry.priceLevel)}</span>` : ''}</div>`;
+          const tempLabel = real ? `${real.tempMin}°–${real.tempMax}°C` : '—';
+          return `<div class="dash-row"><span>${d.name} · ${tempLabel}</span></div>`;
         }).join('') : '<div class="dash-empty">Ajoutez une destination pour voir sa météo</div>'}
       </div>
       <button class="btn ghost small dc-shortcut" data-goto="meteo">Voir le détail →</button>
@@ -4286,9 +4268,24 @@ function renderDashboard(){
     ${tzDiffs.length ? `
     <div class="dash-card dash-wide">
       <div class="dc-head"><h3>🕐 Décalages horaires</h3></div>
-      <div class="dc-sub" style="margin-bottom:8px;">Chez toi, il est actuellement ${localTimeInTz(HOME_TIMEZONE)}.</div>
-      <div class="dash-list">
-        ${tzDiffs.map(x=>`<div class="dash-row"><span>${x.dest.name} — il est ${localTimeInTz(x.dest.timezone)} là-bas</span><b>${x.tz.label}</b></div>`).join('')}
+      <div class="dc-sub" style="margin-bottom:10px;">L'heure actuelle à chaque étape de ton voyage.</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;">
+        ${(()=>{ const home = localHourMinuteInTz(HOME_TIMEZONE); return `
+          <div style="display:flex;flex-direction:column;align-items:center;width:90px;text-align:center;">
+            ${analogClockSVG(home.h, home.m, 64)}
+            <div style="font-weight:700;font-size:12px;margin-top:4px;">Chez toi</div>
+            <div style="font-size:11px;color:var(--ink-soft);">${localTimeInTz(HOME_TIMEZONE)}</div>
+          </div>
+        `; })()}
+        ${tzDiffs.map(x=>{
+          const t = localHourMinuteInTz(x.timezone);
+          return `
+          <div style="display:flex;flex-direction:column;align-items:center;width:90px;text-align:center;">
+            ${analogClockSVG(t.h, t.m, 64)}
+            <div style="font-weight:700;font-size:12px;margin-top:4px;">${x.names.join(', ')}</div>
+            <div style="font-size:11px;color:var(--ink-soft);">${localTimeInTz(x.timezone)}${x.tz && !x.tz.sameZone ? ' · '+x.tz.label : ''}</div>
+          </div>`;
+        }).join('')}
       </div>
     </div>` : ''}
 
@@ -4300,25 +4297,17 @@ function renderDashboard(){
     </div>
 
     <div class="dash-card dash-wide">
-      <div class="dc-head"><h3>🗺️ Itinéraire sur la carte</h3></div>
-      <div id="dashItineraryMaps"></div>
-      <button class="btn ghost small dc-shortcut" data-goto="itineraire">Voir le détail des étapes →</button>
-    </div>
-
-    <div class="dash-card dash-wide">
       <div class="dc-head"><h3>Sauvegardes</h3></div>
       <div class="dc-sub" id="dashBackupSummary">Chargement des sauvegardes…</div>
+      <div class="dc-sub" style="margin-top:4px;">Le dossier est enregistré automatiquement à chaque modification — pas besoin de cliquer sur "sauvegarder".</div>
       <div style="display:flex;gap:8px;margin-top:10px;">
-        <button class="btn small" id="dashSaveNow">💾 Sauvegarder maintenant</button>
         <button class="btn ghost small" id="dashOpenHistory">Voir l'historique →</button>
       </div>
     </div>
   `;
-  renderItineraryMaps();
   renderShareQrCode();
   grid.querySelectorAll('[data-goto]').forEach(btn=> btn.addEventListener('click', ()=> switchView(btn.dataset.goto)));
   document.getElementById('dashShareBtn').addEventListener('click', renderShareQrCode);
-  document.getElementById('dashSaveNow').addEventListener('click', async ()=>{ await createBackup(); renderDashboard(); });
   document.getElementById('dashOpenHistory').addEventListener('click', openHistoryModal);
 
   listBackups().then(backups=>{
