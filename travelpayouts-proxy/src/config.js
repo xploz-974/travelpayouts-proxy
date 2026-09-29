@@ -20,6 +20,11 @@ export const BOOKING_BASE_URL = BOOKING_ENV === 'production'
   ? 'https://demandapi.booking.com/3.2'
   : 'https://demandapi-sandbox.booking.com/3.2';
 
+export const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+export const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+export const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+export const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
+
 // Certaines API (dont Hotellook) bloquent ou répondent différemment aux
 // requêtes sans en-tête User-Agent "normal", en les traitant comme du
 // trafic robot.
@@ -34,5 +39,8 @@ export function warnMissingConfig() {
   }
   if (!BOOKING_AFFILIATE_ID || !BOOKING_API_TOKEN) {
     console.warn('⚠️  BOOKING_AFFILIATE_ID / BOOKING_API_TOKEN manquants dans .env — /api/booking-hotels échouera.');
+  }
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
+    console.warn('⚠️  Variables R2_* manquantes dans .env — la sauvegarde cloud (/api/backup) échouera.');
   }
 }

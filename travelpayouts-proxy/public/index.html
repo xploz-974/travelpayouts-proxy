@@ -78,6 +78,12 @@ input,select,textarea{font-family:inherit;}
 .chip.price-low{background:#e7f0e6;border-color:#c3dcc0;color:#3e6b3a;}
 .chip.price-med{background:var(--amber-soft);border-color:#e6cd9b;color:#8a5a1c;}
 .chip.price-high{background:#f4dede;border-color:#e6bcbc;color:#963d3d;}
+.transport-picker{display:flex;flex-wrap:wrap;gap:8px;}
+.transport-chip{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:68px;padding:9px 4px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;font-size:10.5px;font-weight:600;color:var(--ink-soft);background:var(--paper-raised);text-align:center;transition:border-color .15s,background .15s,color .15s;}
+.transport-chip:hover{border-color:var(--teal);}
+.transport-chip input{position:absolute;opacity:0;width:0;height:0;}
+.transport-chip .tc-icon{font-size:22px;line-height:1;}
+.transport-chip.selected{border-color:var(--teal);background:rgba(18,152,163,.1);color:var(--teal-dark);}
 .topbar-actions{display:flex;gap:8px;flex-wrap:wrap;}
 
 .content{flex:1;overflow-y:auto;padding:26px 28px 60px 28px;}
@@ -98,6 +104,8 @@ input,select,textarea{font-family:inherit;}
 .btn.danger{background:transparent;color:var(--coral);border:1px solid #e6bcbc;}
 .btn.danger:hover{background:#f4dede;}
 .btn.small{padding:5px 10px;font-size:12px;}
+.btn{transition:transform .12s, background .15s;}
+.btn:active{transform:scale(.94);}
 
 /* ---------- deletable card wrapper ---------- */
 .deletable{position:relative;}
@@ -135,14 +143,21 @@ input,select,textarea{font-family:inherit;}
 .kid-stop.origin .bubble{border-color:var(--amber);}
 .kid-stop .kid-name{font-weight:700;font-size:12.5px;margin-top:6px;}
 .kid-stop .kid-sub{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+.kid-stop .kid-country{font-size:9.5px;color:var(--ink-soft);margin-top:2px;opacity:.85;}
 .kid-link{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:70px;padding-top:14px;}
 .kid-link .line{width:100%;height:3px;border-top:3px dashed var(--line);position:relative;}
 .kid-link .icon{font-size:20px;margin-top:-14px;background:var(--paper);padding:0 4px;}
 .kid-link .kid-label{font-size:9.5px;color:var(--ink-soft);margin-top:4px;text-align:center;}
 .dest-card{
   min-width:150px;background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);
-  padding:12px 14px;box-shadow:var(--shadow);
+  padding:12px 14px;box-shadow:var(--shadow);cursor:grab;transition:opacity .15s,border-color .15s;
 }
+.dest-card.dragging{opacity:.4;}
+.dest-card.drop-before{box-shadow:-3px 0 0 var(--sunset), var(--shadow);}
+.dest-card.drop-after{box-shadow:3px 0 0 var(--sunset), var(--shadow);}
+.dest-drag-handle{color:var(--ink-soft);font-size:13px;margin-right:5px;user-select:none;}
+.dest-nights-edit{margin-top:5px;font-size:10.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.dest-nights-edit input{width:48px;padding:3px 5px;border:1px solid var(--line);border-radius:6px;font-size:11.5px;text-align:center;}
 .dest-card .name{font-family:'Fraunces',serif;font-weight:600;font-size:15px;}
 .dest-card .dates{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
 .dest-card .transport{font-size:11.5px;color:var(--teal-dark);margin-top:6px;display:flex;align-items:center;gap:5px;}
@@ -256,6 +271,8 @@ input,select,textarea{font-family:inherit;}
 /* ---------- modal ---------- */
 .overlay{position:fixed;inset:0;background:rgba(22,35,46,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
 .overlay.show{display:flex;}
+@keyframes modalPop{from{opacity:0;transform:scale(.92) translateY(10px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.overlay.show .modal{animation:modalPop .3s cubic-bezier(.34,1.56,.64,1);}
 .modal{background:var(--paper-raised);border-radius:12px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:88vh;overflow-y:auto;}
 .modal.wide{max-width:560px;}
 .modal h3{font-size:17px;margin-bottom:4px;}
@@ -276,7 +293,22 @@ input,select,textarea{font-family:inherit;}
   position:fixed;bottom:20px;right:20px;background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;font-size:12.8px;
   box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;transform:translateY(8px);transition:all .2s;z-index:80;pointer-events:none;
 }
-.save-toast.show{opacity:1;transform:translateY(0);}
+.save-toast.show{opacity:1;transform:translateY(0);animation:toastPop .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes toastPop{0%{transform:translateY(10px) scale(.92);opacity:0;}60%{transform:translateY(-3px) scale(1.03);opacity:1;}100%{transform:translateY(0) scale(1);}}
+
+/* ---------- questionnaire : progression + effectif visuel ---------- */
+.wz-progress{display:flex;align-items:flex-start;margin-bottom:16px;}
+.wz-progress-step{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;width:56px;}
+.wz-progress-dot{width:24px;height:24px;border-radius:50%;background:var(--line);color:var(--ink-soft);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;transition:background .25s,color .25s;}
+.wz-progress-step.active .wz-progress-dot{background:var(--sunset);color:#fff;animation:wzBounce .45s;}
+.wz-progress-step.done .wz-progress-dot{background:var(--teal-dark);color:#fff;}
+.wz-progress-step span.wz-progress-label{font-size:9.5px;color:var(--ink-soft);text-align:center;line-height:1.2;margin-top:2px;}
+.wz-progress-step.active span.wz-progress-label, .wz-progress-step.done span.wz-progress-label{color:var(--ink);font-weight:600;}
+.wz-progress-line{flex:1;height:3px;background:var(--line);margin:10px 2px 0;border-radius:2px;transition:background .25s;}
+.wz-progress-line.done{background:var(--teal-dark);}
+@keyframes wzBounce{0%{transform:scale(.4);}60%{transform:scale(1.3);}100%{transform:scale(1);}}
+@keyframes wzPersonPop{from{opacity:0;transform:scale(.3) translateY(6px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.wz-person{display:inline-block;animation:wzPersonPop .3s ease-out backwards;}
 
 @media (max-width:880px){
   .itinerary-grid{grid-template-columns:1fr;}
@@ -320,7 +352,11 @@ input,select,textarea{font-family:inherit;}
     </button>
     <button class="nav-item" data-view="meteo">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19a4.5 4.5 0 000-9 6 6 0 10-11.4 3M9 13a4 4 0 104 4"/></svg>
-      <span class="label">Météo &amp; prix</span>
+      <span class="label">Météo</span>
+    </button>
+    <button class="nav-item" data-view="activites">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/><path d="M3 12l1.5 1.5M21 3l-2 2"/><circle cx="7" cy="7" r="2"/></svg>
+      <span class="label">Activités &amp; achats</span>
     </button>
     <button class="nav-item" data-view="activites">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/><path d="M3 12l1.5 1.5M21 3l-2 2"/><circle cx="7" cy="7" r="2"/></svg>
@@ -377,7 +413,6 @@ input,select,textarea{font-family:inherit;}
         <button class="btn ghost small" id="settingsBtn" title="Configurer la connexion aux données réelles">⚙ <span class="label-text">Paramètres</span></button>
         <button class="btn ghost small" id="resetBtn" title="Repartir d'un dossier vierge">↺ <span class="label-text">Réinitialiser</span></button>
         <button class="btn ghost small" id="historyBtn" title="Voir les sauvegardes précédentes">🕐 <span class="label-text">Historique</span></button>
-        <button class="btn small" id="saveBtn" title="Sauvegarder l'état actuel">💾 <span class="label-text">Sauvegarder</span></button>
       </div>
     </div>
 
@@ -407,6 +442,7 @@ input,select,textarea{font-family:inherit;}
         </div>
 
         <div id="originBanner" class="dash-card" style="margin-bottom:16px;"></div>
+        <div id="hubReturnBanner"></div>
 
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
           <div class="dc-head"><h3>🎈 Le voyage expliqué simplement</h3></div>
@@ -435,6 +471,12 @@ input,select,textarea{font-family:inherit;}
             <p>Fais une demande de devis, ou saisis directement un prix reçu d'une agence (ex. Air Austral) pour l'appliquer à un ou plusieurs voyageurs.</p>
           </div>
           <button class="btn ghost" id="addTicketBtn">+ Ajouter un billet / devis</button>
+        </div>
+
+        <div class="dash-card dash-wide" style="margin-bottom:16px;">
+          <div class="dc-head"><h3>Rechercher un prix réel, étape par étape</h3></div>
+          <p class="forecast-note" style="margin-bottom:10px;">Interroge directement Travelpayouts / Duffel pour chaque étape avion de ton itinéraire.</p>
+          <div id="ticketRealPrices" class="dash-list"></div>
         </div>
 
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
@@ -486,8 +528,8 @@ input,select,textarea{font-family:inherit;}
       <div class="view" id="view-meteo">
         <div class="section-head">
           <div>
-            <h2>Météo &amp; indicateur de prix</h2>
-            <p>Données météo réelles (Open-Meteo, gratuit, sans clé) — prévision en direct si le départ est proche, sinon moyenne calculée sur les 5 dernières années pour ces dates précises.</p>
+            <h2>Météo</h2>
+            <p>Météo réelle (Open-Meteo, gratuit, sans clé) pour les dates précises de chaque étape de ton voyage — prévision en direct si le départ est proche, sinon moyenne calculée sur les 5 dernières années pour ces mêmes dates.</p>
           </div>
           <button class="btn ghost small" id="refreshWeatherBtn">🔄 Actualiser la météo</button>
         </div>
@@ -711,6 +753,12 @@ const SOURCES = ['Booking','Airbnb','Agoda','Hotels','Google'];
 const DOC_TYPES = ['Passeport', "Carte d'identité", 'Visa', 'Assurance voyage', 'Billet'];
 const REQUIRED_DOC_TYPES = ['Passeport', 'Assurance voyage'];
 const TRANSPORT_MODES = ['Avion','Train','Bus / Car','Voiture','Ferry / Bateau','Autre'];
+const TRANSPORT_ICONS = { 'Avion':'✈️', 'Train':'🚆', 'Bus / Car':'🚌', 'Voiture':'🚗', 'Ferry / Bateau':'⛴️', 'Autre':'❓' };
+// Met une majuscule à chaque mot quelle que soit la casse saisie (noms de famille/groupes) :
+// "famille dupont" / "FAMILLE DUPONT" -> "Famille Dupont", en gardant les tirets ("marie-claire" -> "Marie-Claire").
+function capitalizeWords(str){
+  return str.toLowerCase().split(/(\s+|-)/).map(part => /^[\s-]+$/.test(part) ? part : (part.charAt(0).toUpperCase()+part.slice(1))).join('');
+}
 // Ordre indicatif du moins cher au plus cher, en moyenne générale — pas un prix réel comparé,
 // juste un repère habituel (varie énormément selon la distance, la saison, la compagnie...).
 const TRANSPORT_PRICE_RANK = { 'Bus / Car':1, 'Train':2, 'Ferry / Bateau':3, 'Voiture':4, 'Avion':5, 'Autre':6 };
@@ -1074,7 +1122,6 @@ async function loadWeatherCard(dest){
       if(retryBtn) retryBtn.addEventListener('click', ()=>{ delete REALWX_CACHE[cacheKey]; el.innerHTML = '<p class="dash-empty">Nouvelle tentative…</p>'; loadWeatherCard(dest); });
       return;
     }
-    const wEntry = state.weather.find(w=>w.destId===dest.id) || {};
     el.innerHTML = `
       <h3>${dest.name}</h3>
       <div class="period">${fmtDate(dest.start)} → ${fmtDate(dest.end)} · ${info.source}</div>
@@ -1082,7 +1129,6 @@ async function loadWeatherCard(dest){
       <div class="wx-row"><span>Probabilité de pluie</span><b>${info.rainProb}%</b></div>
       <div class="wx-row"><span>Humidité moyenne</span><b>${info.humidity!=null ? info.humidity+'%' : 'n/d'}</b></div>
       <div class="wx-row"><span>Ensoleillement</span><b>${info.sunshineHours!=null ? info.sunshineHours+'h/jour' : 'n/d'}</b></div>
-      ${wEntry.priceLevel ? `<div class="wx-row"><span>Indicateur tarifaire</span><span class="wx-badge ${badgeClass(wEntry.priceLevel)}">${priceLabel(wEntry.priceLevel)}</span></div>` : ''}
       <div style="margin-top:10px;"><canvas id="wx-chart-${dest.id}" height="130"></canvas></div>
       <p style="font-size:12.3px;margin-top:10px;"><strong>Comment s'habiller :</strong> ${info.clothing}</p>
       <div class="forecast-note" style="display:flex;gap:12px;flex-wrap:wrap;">
@@ -1156,6 +1202,39 @@ function tzDiffInfo(destTz){
 function localTimeInTz(tz){
   try{ return new Date().toLocaleTimeString('fr-FR', { timeZone: tz, hour:'2-digit', minute:'2-digit' }); }
   catch(err){ return '—'; }
+}
+function localHourMinuteInTz(tz){
+  try{
+    const parts = new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:false }).split(':');
+    return { h: parseInt(parts[0],10), m: parseInt(parts[1],10) };
+  }catch(err){ return { h:0, m:0 }; }
+}
+
+/* Petite horloge analogique en SVG inline — pas de dépendance externe, juste des aiguilles
+   positionnées par trigonométrie à partir de l'heure locale du fuseau donné. */
+function analogClockSVG(h, m, size){
+  size = size || 64;
+  const cx = size/2, cy = size/2;
+  const hourAngle = ((h % 12) + m/60) * 30;
+  const minuteAngle = m * 6;
+  const toXY = (angleDeg, len)=>{
+    const a = angleDeg * Math.PI/180;
+    return [ (cx + len*Math.sin(a)).toFixed(1), (cy - len*Math.cos(a)).toFixed(1) ];
+  };
+  const [hx,hy] = toXY(hourAngle, size*0.26);
+  const [mx,my] = toXY(minuteAngle, size*0.40);
+  const ticks = Array.from({length:12}, (_,i)=>{
+    const [x1,y1] = toXY(i*30, size*0.42);
+    const [x2,y2] = toXY(i*30, size*0.48);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#8a9aa0" stroke-width="1.5"/>`;
+  }).join('');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${(size*0.47).toFixed(1)}" fill="var(--paper-raised)" stroke="var(--line)" stroke-width="2"/>
+    ${ticks}
+    <line x1="${cx}" y1="${cy}" x2="${hx}" y2="${hy}" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="${cx}" y1="${cy}" x2="${mx}" y2="${my}" stroke="var(--teal-dark)" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="2.5" fill="var(--ink)"/>
+  </svg>`;
 }
 
 function transportChipsHTML(modes){
@@ -1325,6 +1404,49 @@ async function deleteBackup(key){
   openHistoryModal();
 }
 
+/* ============================ SAUVEGARDE CLOUD (Cloudflare R2) ============================
+   Passe par le serveur relais (voir src/routes/backup.js) : le navigateur ne parle jamais
+   directement à Cloudflare, les identifiants R2 restent côté serveur. Permet de retrouver
+   son dossier de voyage depuis n'importe quel appareil, contrairement à la sauvegarde
+   locale (localStorage / window.storage) qui reste propre à cet appareil.
+================================================================================================ */
+async function callProxyPost(path, body){
+  if(!state.settings.proxyUrl){ throw { kind:'no-proxy', message:"Configure d'abord un serveur relais dans ⚙ Paramètres." }; }
+  let res;
+  try{
+    res = await fetch(`${state.settings.proxyUrl}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }catch(err){
+    throw { kind:'unreachable', message:"Impossible de joindre le serveur relais à cette adresse — vérifie qu'elle est correcte et que le service est démarré." };
+  }
+  let data;
+  try{ data = await res.json(); }
+  catch(err){ throw { kind:'bad-response', message:`Le serveur a répondu (code ${res.status}) mais pas avec le format attendu.` }; }
+  if(!res.ok || data.error){
+    throw { kind:'api-error', message: data.error || `Erreur du serveur relais (code ${res.status}).` };
+  }
+  return data;
+}
+
+async function saveCloudBackup(label){
+  await callProxyPost('/api/backup', { label, data: state });
+}
+async function listCloudBackups(){
+  const data = await callProxy('/api/backup/list');
+  return data.items || [];
+}
+async function restoreCloudBackup(key){
+  const parsed = await callProxy('/api/backup/get?key='+encodeURIComponent(key));
+  state = patchSettingsDefaults(parsed.data);
+  closeModal();
+  renderAll();
+  await autosave();
+  showToast('Sauvegarde cloud restaurée ✓');
+}
+
 /* Export / import en fichier .json — fonctionne toujours, sur n'importe quel appareil,
    et peut être stocké n'importe où (Drive, clé USB, ou même un dépôt GitHub PRIVÉ —
    voir la note dans le modal, ces fichiers contiennent des photos de documents). */
@@ -1372,6 +1494,13 @@ async function openHistoryModal(){
         <label class="btn ghost small" style="cursor:pointer;">📂 Importer un fichier<input type="file" accept="application/json" id="hm-import-file" style="display:none;"></label>
       </div>
     </div>
+    <div class="field" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px;">
+      <label>☁️ Sauvegarde cloud (Cloudflare R2)</label>
+      <p class="forecast-note" style="margin:0 0 8px 0;">Accessible depuis n'importe quel appareil, via ton serveur relais — nécessite qu'il soit configuré avec les identifiants R2 (voir README).</p>
+      <button class="btn ghost small" id="hm-cloud-save">☁️ Sauvegarder dans le cloud</button>
+      <p class="forecast-note" id="hm-cloud-error" style="margin-top:6px;color:#963d3d;"></p>
+      <div id="hm-cloud-list" style="margin-top:10px;"><p class="dash-empty">Chargement des sauvegardes cloud…</p></div>
+    </div>
   `;
   document.getElementById('overlay').classList.add('show');
   document.getElementById('modalClose').addEventListener('click', closeModal);
@@ -1385,6 +1514,47 @@ async function openHistoryModal(){
     if(file) importBackupFile(file);
     closeModal();
   });
+
+  async function refreshCloudList(){
+    const cloudWrap = document.getElementById('hm-cloud-list');
+    const errEl = document.getElementById('hm-cloud-error');
+    if(!cloudWrap) return;
+    try{
+      const items = await listCloudBackups();
+      errEl.textContent = '';
+      if(!items.length){ cloudWrap.innerHTML = '<p class="dash-empty">Aucune sauvegarde cloud pour l\'instant.</p>'; return; }
+      cloudWrap.innerHTML = items.map(b => `
+        <div class="backup-row">
+          <div>
+            <div class="bdate">${b.date ? new Date(b.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})+' à '+new Date(b.date).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '—'}</div>
+            <div class="blabel">${b.label}</div>
+          </div>
+          <div class="backup-actions">
+            <button class="btn ghost small" data-cloud-restore="${b.key}">Restaurer</button>
+          </div>
+        </div>
+      `).join('');
+      cloudWrap.querySelectorAll('[data-cloud-restore]').forEach(btn=> btn.addEventListener('click', ()=>{
+        if(confirm('Remplacer le dossier actuel par cette sauvegarde cloud ?')) restoreCloudBackup(btn.dataset.cloudRestore);
+      }));
+    }catch(err){
+      cloudWrap.innerHTML = '';
+      errEl.textContent = err.message || 'Sauvegarde cloud indisponible.';
+    }
+  }
+  document.getElementById('hm-cloud-save').addEventListener('click', async ()=>{
+    const label = prompt('Nom de cette sauvegarde cloud (facultatif) :', 'Sauvegarde manuelle');
+    if(label === null) return;
+    try{
+      await saveCloudBackup(label);
+      showToast('Sauvegarde envoyée dans le cloud ✓');
+      refreshCloudList();
+    }catch(err){
+      document.getElementById('hm-cloud-error').textContent = err.message || "Échec de l'envoi vers le cloud.";
+    }
+  });
+  refreshCloudList();
+
   const backups = await listBackups();
   const wrap = document.getElementById('backupListWrap');
   if(!wrap) return; // modal fermée entre-temps
@@ -1571,6 +1741,7 @@ async function fetchRealFlight(dest){
       dest.realFlightAirline = best.airline;
       dest.realFlightSource = 'Travelpayouts';
       renderDestRow();
+      renderTicketRealPrices();
       autosave();
       showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
     });
@@ -1602,6 +1773,7 @@ async function fetchDuffelFlight(dest){
       dest.realFlightAirline = best.airline;
       dest.realFlightSource = 'Duffel';
       renderDestRow();
+      renderTicketRealPrices();
       autosave();
       showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
     });
@@ -1690,7 +1862,6 @@ function renderLegs(){
   }));
 }
 
-document.getElementById('saveBtn').addEventListener('click', ()=> createBackup());
 document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
 document.getElementById('resetBtn').addEventListener('click', ()=>{
   if(confirm('Repartir d\'un dossier vierge ? Pensez à créer une sauvegarde avant si vous voulez garder le dossier actuel.')){
@@ -1711,7 +1882,7 @@ const ALL_TABS = [
   {key:'itineraire', label:'Itinéraire'},
   {key:'billets', label:"Billets d'avion"},
   {key:'hebergements', label:'Hébergements'},
-  {key:'meteo', label:'Météo & prix'},
+  {key:'meteo', label:'Météo'},
   {key:'activites', label:'Activités & achats'},
   {key:'voyageurs', label:'Voyageurs'},
   {key:'documents', label:'Documents'},
@@ -1841,14 +2012,16 @@ function renderDestRow(){
     const key = d.name+'|'+d.country;
     const repeated = cityCounts[key] > 1;
     return `
-    <div class="dest-card deletable">
+    <div class="dest-card deletable" draggable="true" data-destid="${d.id}">
       <button class="del-x" data-deldest="${d.id}" title="Supprimer cette destination">✕</button>
-      <div class="name">${d.name}${d.iata ? ` <span style="font-weight:400;color:var(--ink-soft);font-size:11px;">(${d.iata})</span>` : ''}</div>
+      <div class="name"><span class="dest-drag-handle" title="Glisser pour réordonner les étapes">⠿</span>${d.name}${d.iata ? ` <span style="font-weight:400;color:var(--ink-soft);font-size:11px;">(${d.iata})</span>` : ''}</div>
       ${repeated ? `<div style="font-size:10.5px;color:var(--teal-dark);font-weight:600;">🔗 ${d.name} visité ${cityCounts[key]} fois dans ce voyage</div>` : ''}
-      <div class="dates">${fmtDate(d.start)} → ${fmtDate(d.end)} <button class="link-btn" style="font-size:10.5px;" data-editdates="${d.id}">✏️ modifier</button></div>
+      <div class="dates">${fmtDate(d.start)} → ${fmtDate(d.end)} <button class="link-btn" style="font-size:10.5px;" data-editdates="${d.id}">✏️ dates précises</button></div>
+      <div class="dest-nights-edit"><label style="font-weight:600;color:var(--ink-soft);">Nuits ici :</label> <input type="number" min="1" class="dest-nights-input" data-destid="${d.id}" value="${Math.max(1, Math.round((new Date(d.end)-new Date(d.start))/86400000))}"> <span style="color:var(--ink-soft);">— les étapes suivantes s'ajustent automatiquement</span></div>
       ${(()=>{ const tz = tzDiffInfo(d.timezone); if(!tz || tz.sameZone) return ''; return `<div style="font-size:10.5px;color:var(--amber);font-weight:600;margin-top:2px;" title="Il est ${localTimeInTz(d.timezone)} là-bas en ce moment">🕐 ${tz.label} par rapport à chez toi</div>`; })()}
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;">
         <span id="dest-routetype-${d.id}">${routeTypeBadgeHTML(d.routeType)}</span>
+        ${d.stopover ? `<span class="wx-badge badge-med" style="font-size:10px;" title="Escale déclarée par toi à l'ajout de cette étape">✈️ via ${d.stopover}</span>` : ''}
       </div>
       ${transportChipsHTML(d.transportModes)}
       ${d.realFlightPrice ? `<div class="transport" style="color:var(--teal-dark);font-weight:600;margin-top:4px;">${d.realFlightPrice}€/pers. réel · ${d.realFlightAirline} <span style="font-weight:400;color:var(--ink-soft);font-size:10px;">(${d.realFlightSource||'?'})</span> <button class="link-btn" style="font-size:10px;" data-editflightprice="${d.id}">modifier</button></div>` : ((d.transportModes||[]).includes('Avion') ? `<div style="display:flex;gap:8px;margin-top:6px;"><button class="link-btn" style="font-size:11px;" data-findflight="${d.id}">Vol réel (Travelpayouts) →</button><button class="link-btn" style="font-size:11px;" data-findflightduffel="${d.id}">Vol Duffel →</button></div>` : '')}
@@ -1885,6 +2058,19 @@ function renderDestRow(){
     e.stopPropagation();
     openEditDestDatesModal(btn.dataset.editdates);
   }));
+  el.querySelectorAll('.dest-nights-input').forEach(inp=> inp.addEventListener('click', e=> e.stopPropagation()));
+  el.querySelectorAll('.dest-nights-input').forEach(inp=> inp.addEventListener('change', ()=>{
+    const dest = state.destinations.find(d=>d.id===inp.dataset.destid);
+    if(!dest) return;
+    const n = Math.max(1, parseInt(inp.value)||1);
+    const newEnd = new Date(new Date(dest.start).getTime() + n*86400000).toISOString().slice(0,10);
+    shiftDestinationDates(dest, dest.start, newEnd);
+    resequenceDestinations(state.destinations.map(x=>x.id));
+    renderAll();
+    autosave();
+    showToast(`${dest.name} : ${n} nuit${n>1?'s':''} — étapes suivantes ajustées ✓`);
+  }));
+  attachDestDrag(el);
   tripModeLabel();
 
   // Calcule discrètement le badge Direct/Avec escale — et le recalcule si l'aéroport
@@ -1900,6 +2086,89 @@ function renderDestRow(){
       const badgeEl = document.getElementById('dest-routetype-'+d.id);
       if(badgeEl) badgeEl.innerHTML = routeTypeBadgeHTML(type);
     }
+  });
+}
+
+/* ============================ RÉORGANISATION DE L'ITINÉRAIRE ============================
+   Les destinations sont affichées dans l'ordre du tableau state.destinations (pas triées
+   par date) : cet ordre EST la séquence du voyage. Glisser une carte pour la réordonner,
+   ou changer directement le nombre de nuits d'une étape, recalcule en cascade les dates de
+   toutes les étapes suivantes (chacune garde son propre nombre de nuits, seul son
+   positionnement dans le temps bouge) — pour éviter des dates qui se chevauchent entre deux
+   destinations (ex. une excursion vers une ville quand on ne change pas d'hébergement de
+   base) sans que le voyageur ait à recalculer les dates à la main.
+================================================================================================ */
+function shiftDestinationDates(dest, newStart, newEnd){
+  // Conserve les hébergements déjà glissés sur les jours, par position (jour 1 reste jour 1),
+  // même si les dates exactes changent — même logique que openEditDestDatesModal.
+  const oldDayIds = state.days.filter(d=>d.destId===dest.id).sort((a,b)=> a.date.localeCompare(b.date)).map(d=>d.id);
+  const placementsByIndex = oldDayIds.map(id=> state.placements[id] || []);
+  oldDayIds.forEach(id=> delete state.placements[id]);
+  state.days = state.days.filter(d=>d.destId!==dest.id);
+  dest.start = newStart; dest.end = newEnd;
+  let cur = new Date(newStart); const endD = new Date(newEnd); let idx = 0;
+  while(cur < endD){
+    const dayId = dest.id+'-'+cur.toISOString().slice(0,10);
+    state.days.push({ id:dayId, destId:dest.id, destName:dest.name, date:cur.toISOString().slice(0,10) });
+    state.placements[dayId] = placementsByIndex[idx] || [];
+    cur.setDate(cur.getDate()+1);
+    idx++;
+  }
+}
+
+function resequenceDestinations(orderedIds){
+  if(!orderedIds.length) return;
+  const first = state.destinations.find(d=>d.id===orderedIds[0]);
+  if(!first) return;
+  let cur = new Date(first.start); // ancre : la toute première étape garde sa date de départ
+  orderedIds.forEach(id=>{
+    const dest = state.destinations.find(d=>d.id===id);
+    if(!dest) return;
+    const nights = Math.max(1, Math.round((new Date(dest.end)-new Date(dest.start))/86400000));
+    const newStart = cur.toISOString().slice(0,10);
+    cur = new Date(cur.getTime() + nights*86400000);
+    const newEnd = cur.toISOString().slice(0,10);
+    if(newStart !== dest.start || newEnd !== dest.end){
+      shiftDestinationDates(dest, newStart, newEnd);
+    }
+  });
+}
+
+function attachDestDrag(container){
+  let draggedId = null;
+  container.querySelectorAll('.dest-card[draggable="true"]').forEach(card=>{
+    card.addEventListener('dragstart', e=>{
+      draggedId = card.dataset.destid;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(()=> card.classList.add('dragging'), 0);
+    });
+    card.addEventListener('dragend', ()=> card.classList.remove('dragging'));
+    card.addEventListener('dragover', e=>{
+      e.preventDefault();
+      if(card.dataset.destid === draggedId) return;
+      const rect = card.getBoundingClientRect();
+      const before = (e.clientX - rect.left) < rect.width/2;
+      card.classList.toggle('drop-before', before);
+      card.classList.toggle('drop-after', !before);
+    });
+    card.addEventListener('dragleave', ()=> card.classList.remove('drop-before','drop-after'));
+    card.addEventListener('drop', e=>{
+      e.preventDefault();
+      card.classList.remove('drop-before','drop-after');
+      if(!draggedId || draggedId === card.dataset.destid) return;
+      const fromIdx = state.destinations.findIndex(d=>d.id===draggedId);
+      if(fromIdx===-1) return;
+      const rect = card.getBoundingClientRect();
+      const before = (e.clientX - rect.left) < rect.width/2;
+      const [moved] = state.destinations.splice(fromIdx,1);
+      let toIdx = state.destinations.findIndex(d=>d.id===card.dataset.destid);
+      if(toIdx===-1) toIdx = state.destinations.length;
+      state.destinations.splice(toIdx + (before?0:1), 0, moved);
+      resequenceDestinations(state.destinations.map(d=>d.id));
+      renderAll();
+      autosave();
+      showToast('Ordre des étapes mis à jour — dates recalculées ✓');
+    });
   });
 }
 
@@ -1934,22 +2203,7 @@ function openEditDestDatesModal(destId){
     const newStart = document.getElementById('ed-start').value;
     const newEnd = document.getElementById('ed-end').value;
     if(!newStart || !newEnd || new Date(newEnd) <= new Date(newStart)){ showToast('Vérifie les dates : le départ doit être après l\'arrivée.'); return; }
-
-    // sauvegarde les hébergements déjà placés, par position (jour 1, jour 2...) plutôt que par date exacte
-    const oldDayIds = state.days.filter(d=>d.destId===destId).sort((a,b)=> a.date.localeCompare(b.date)).map(d=>d.id);
-    const placementsByIndex = oldDayIds.map(id=> state.placements[id] || []);
-    oldDayIds.forEach(id=> delete state.placements[id]);
-    state.days = state.days.filter(d=>d.destId!==destId);
-
-    dest.start = newStart; dest.end = newEnd;
-    let cur = new Date(newStart); const endD = new Date(newEnd); let idx = 0;
-    while(cur < endD){
-      const dayId = destId+'-'+cur.toISOString().slice(0,10);
-      state.days.push({ id:dayId, destId, destName:dest.name, date:cur.toISOString().slice(0,10) });
-      state.placements[dayId] = placementsByIndex[idx] || [];
-      cur.setDate(cur.getDate()+1);
-      idx++;
-    }
+    shiftDestinationDates(dest, newStart, newEnd);
     closeModal();
     renderAll();
     autosave();
@@ -2331,7 +2585,25 @@ function renderTravelers(){
 }
 
 function closeModal(){ document.getElementById('overlay').classList.remove('show'); }
-document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
+function modalHasUnsavedInput(){
+  const body = document.getElementById('modalBody');
+  if(!body) return false;
+  const fields = body.querySelectorAll('input, textarea, select');
+  for(const el of fields){
+    if(el.type === 'checkbox' || el.type === 'radio'){ if(el.checked !== el.defaultChecked) return true; continue; }
+    if(el.tagName === 'SELECT'){ if(el.selectedIndex > 0) return true; continue; }
+    if((el.value||'').trim()) return true;
+  }
+  return false;
+}
+document.getElementById('overlay').addEventListener('click', e=>{
+  if(e.target.id!=='overlay') return;
+  if(wizard || modalHasUnsavedInput()){
+    if(!confirm('Fermer sans enregistrer ? Les informations saisies seront perdues.')) return;
+  }
+  wizard = null;
+  closeModal();
+});
 
 /* Un fichier choisi par l'utilisateur est lu en base64 et gardé dans l'état
    (donc sauvegardé avec le reste du dossier). Pour l'instant, tout reste sur
@@ -2492,6 +2764,9 @@ function openTravelerModal(id){
 function openAddTravelerModal(groupId, existingTraveler){
   const isEdit = !!existingTraveler;
   let pendingIdDoc = null; // conserve la photo analysée pour l'attacher au voyageur à l'enregistrement
+  const wizardGroups = (!isEdit && wizard && wizard.groupIds && wizard.groupIds.length > 1)
+    ? wizard.groupIds.map(id=>state.groups.find(g=>g.id===id)).filter(Boolean)
+    : null;
 
   document.getElementById('modalBody').innerHTML = `
     ${wizard && !isEdit ? wizardProgressHTML(3) : ''}
@@ -2503,16 +2778,20 @@ function openAddTravelerModal(groupId, existingTraveler){
       <input type="file" id="nf-ai-photo" accept="image/*">
       <p class="forecast-note" id="nf-ai-status" style="margin-top:6px;">Importe une photo lisible du passeport ou de la carte d'identité — les champs ci-dessous se rempliront automatiquement. Fonctionne uniquement dans Claude ; sinon, remplis simplement les champs à la main.</p>
     </div>` : ''}
+    ${wizardGroups ? `
+    <div class="field"><label>👪 Dans quel groupe ?</label>
+      <select id="nf-wizard-group">${wizardGroups.map(g=>`<option value="${g.id}" ${g.id===groupId?'selected':''}>${g.name}</option>`).join('')}</select>
+    </div>` : ''}
     <div class="field"><label>Prénom</label><input id="nf-first" placeholder="Prénom" value="${isEdit?(existingTraveler.first||''):''}"></div>
     <div class="field"><label>Deuxième prénom (facultatif)</label><input id="nf-middle" placeholder="Ex. Marie" value="${isEdit?(existingTraveler.middleName||''):''}"></div>
     <div class="field"><label>Nom</label><input id="nf-last" placeholder="Nom" value="${isEdit?(existingTraveler.last||''):''}"></div>
     <div class="field"><label>Date de naissance</label><input id="nf-birth" type="date" value="${isEdit?(existingTraveler.birth||''):''}"></div>
     <div class="field">
       <label>Sexe (pour la couleur d'identification)</label>
-      <div style="display:flex;gap:14px;">
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px;"><input type="radio" name="nf-gender" value="F" ${isEdit&&existingTraveler.gender==='F'?'checked':''}> 🌸 Femme</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px;"><input type="radio" name="nf-gender" value="M" ${isEdit&&existingTraveler.gender==='M'?'checked':''}> 💙 Homme</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px;"><input type="radio" name="nf-gender" value="" ${!isEdit||!existingTraveler.gender?'checked':''}> Ne pas préciser</label>
+      <div class="transport-picker">
+        <label class="transport-chip${isEdit&&existingTraveler.gender==='F'?' selected':''}"><input type="radio" class="nf-gender-cb" name="nf-gender" value="F" ${isEdit&&existingTraveler.gender==='F'?'checked':''}><span class="tc-icon">🌸</span><span class="tc-label">Femme</span></label>
+        <label class="transport-chip${isEdit&&existingTraveler.gender==='M'?' selected':''}"><input type="radio" class="nf-gender-cb" name="nf-gender" value="M" ${isEdit&&existingTraveler.gender==='M'?'checked':''}><span class="tc-icon">💙</span><span class="tc-label">Homme</span></label>
+        <label class="transport-chip${!isEdit||!existingTraveler.gender?' selected':''}"><input type="radio" class="nf-gender-cb" name="nf-gender" value="" ${!isEdit||!existingTraveler.gender?'checked':''}><span class="tc-icon">🤍</span><span class="tc-label">Neutre</span></label>
       </div>
     </div>
     <div class="field">
@@ -2537,6 +2816,9 @@ function openAddTravelerModal(groupId, existingTraveler){
   `;
   document.getElementById('overlay').classList.add('show');
   document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.querySelectorAll('.nf-gender-cb').forEach(cb=> cb.addEventListener('change', ()=>{
+    document.querySelectorAll('.nf-gender-cb').forEach(other=> other.closest('.transport-chip').classList.toggle('selected', other.checked));
+  }));
   document.getElementById('nf-birth').addEventListener('change', e=>{
     const preview = document.getElementById('nf-role-preview');
     if(!e.target.value){ preview.innerHTML = '<span class="dash-empty" style="margin:0;">Renseigne la date de naissance pour calculer automatiquement le type.</span>'; return; }
@@ -2599,7 +2881,8 @@ function openAddTravelerModal(groupId, existingTraveler){
       return;
     }
 
-    const traveler = {id:'t'+Date.now(), groupId, first, middleName, last, birth, gender, documents:[]};
+    const actualGroupId = wizardGroups ? document.getElementById('nf-wizard-group').value : groupId;
+    const traveler = {id:'t'+Date.now(), groupId: actualGroupId, first, middleName, last, birth, gender, documents:[]};
     if(pendingIdDoc){
       traveler.documents.push({
         id:'doc'+Date.now(), type: pendingIdDoc.type, fileName: pendingIdDoc.fileName, mime: pendingIdDoc.mime,
@@ -2617,7 +2900,7 @@ function openAddTravelerModal(groupId, existingTraveler){
       wizard.travelersCreated++;
       if(wizard.travelersCreated < wizard.travelersTarget){
         showToast(`Voyageur ${wizard.travelersCreated}/${wizard.travelersTarget} ajouté — au suivant.`);
-        openAddTravelerModal(wizard.groupId);
+        openAddTravelerModal(wizard.groupIds[0]);
       } else {
         wizardFinish();
       }
@@ -3390,6 +3673,74 @@ function renderOriginBanner(){
   wireOriginPicker('ob', ()=>{ renderOriginBanner(); renderDestRow(); renderKidTimeline(); });
 }
 
+/* ============================ HUB DE VOYAGE (aller-retour international) ============================
+   Quand le voyage part d'un point fixe (ex. La Réunion) vers une porte d'entrée internationale
+   (ex. Bangkok) avec un billet aller-retour, cette première destination est le "hub" : toutes les
+   excursions suivantes (autre ville, autre pays) en repartent, mais le vol retour vers l'origine
+   part forcément du hub — pas de la dernière ville visitée. Ex. Réunion → Paris → Espagne/Bordeaux
+   → il faut revenir à Paris avant de rentrer à La Réunion, sauf billet multi-destinations.
+============================================================================================================ */
+function getTripHub(){
+  if(!state.destinations.length) return null;
+  return [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start))[0];
+}
+function getLastLeg(){
+  if(!state.destinations.length) return null;
+  return [...state.destinations].sort((a,b)=> a.end.localeCompare(b.end))[state.destinations.length-1];
+}
+
+/* Résumé pour la carte "Destinations" du tableau de bord : indique le trajet aller-retour
+   (origine <-> hub) et le détail de chaque petite étape/excursion entre les deux. */
+function destinationsSummaryLabel(){
+  if(!state.destinations.length) return 'Aucune pour l\'instant';
+  const hub = getTripHub();
+  const ordered = [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start));
+  const steps = ordered.map(d=>{
+    const nights = Math.max(1, Math.round((new Date(d.end)-new Date(d.start))/86400000));
+    return `${d.name} (${nights}n)`;
+  }).join(' → ');
+  const roundTrip = hub ? `Aller-retour ${state.settings.originIata ? state.settings.originIata+' ↔ ' : '↔ '}${hub.name}${hub.iata?' ('+hub.iata+')':''}` : '';
+  return `${roundTrip}${roundTrip && steps ? ' · ' : ''}${steps}`;
+}
+function renderHubReturnBanner(){
+  const box = document.getElementById('hubReturnBanner');
+  if(!box) return;
+  const hub = getTripHub();
+  const lastLeg = getLastLeg();
+  if(!hub || !lastLeg || hub.id === lastLeg.id || (hub.name===lastLeg.name && hub.country===lastLeg.country)){
+    box.innerHTML = '';
+    return;
+  }
+  if(state.settings.hubWarningDismissedFor === lastLeg.id){ box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="dash-card" style="margin-bottom:16px;background:var(--amber-soft);border-color:#e6cd9b;">
+      <div class="dc-head"><h3>✈️ Pense au vol retour</h3></div>
+      <p class="dc-sub">Ton itinéraire arrive d'abord à <b>${hub.name}${hub.iata?' ('+hub.iata+')':''}</b> — c'est probablement de là que part ton vol retour${state.settings.originIata?' vers '+state.settings.originIata:''} (billet aller-retour classique). Ta dernière étape est <b>${lastLeg.name}</b> : il faudra repasser par ${hub.name} avant de rentrer, sauf si tu as un billet multi-destinations.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <button class="btn small" id="hub-add-return-btn">+ Ajouter le retour vers ${hub.name}</button>
+        <button class="btn ghost small" id="hub-dismiss-btn">J'ai un billet multi-destinations, ignorer</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('hub-add-return-btn').addEventListener('click', ()=>{
+    const start = new Date(new Date(lastLeg.end).getTime()+86400000).toISOString().slice(0,10);
+    const end = new Date(new Date(start).getTime()+86400000).toISOString().slice(0,10);
+    const id = 'd'+Date.now();
+    state.destinations.push({id, name:hub.name, country:hub.country, start, end, transport:'Avion', transportModes:['Avion'], iata:hub.iata, lat:hub.lat, lon:hub.lon, timezone:hub.timezone});
+    const dayId = id+'-'+start;
+    state.days.push({id:dayId, destId:id, destName:hub.name, date:start});
+    state.placements[dayId] = [];
+    renderAll();
+    autosave();
+    showToast(`Étape retour vers ${hub.name} ajoutée ✓`);
+  });
+  document.getElementById('hub-dismiss-btn').addEventListener('click', ()=>{
+    state.settings.hubWarningDismissedFor = lastLeg.id;
+    autosave();
+    renderHubReturnBanner();
+  });
+}
+
 /* ============================ FRISE ILLUSTRÉE (pour expliquer à un enfant) ============================
    Une ligne simple avec des bulles et de gros émojis : maison de départ → moyen de
    transport → ville 1 → moyen de transport → ville 2 ... Pas de texte compliqué,
@@ -3414,11 +3765,13 @@ function renderKidTimeline(){
 
   const originAirport = state.settings.originIata && AIRPORT_DATA.byIata ? AIRPORT_DATA.byIata[state.settings.originIata] : null;
   const originLabel = originAirport ? originAirport.city : 'La maison';
+  const originSub = state.settings.originIata ? `<div class="kid-country">${state.settings.originIata}</div>` : '';
   let html = `
     <div class="kid-stop origin">
       <div class="bubble">🏠</div>
       <div class="kid-name">${originLabel}</div>
       <div class="kid-sub">On part d'ici !</div>
+      ${originSub}
     </div>
   `;
 
@@ -3434,9 +3787,32 @@ function renderKidTimeline(){
         <div class="bubble">📍</div>
         <div class="kid-name">${d.name}</div>
         <div class="kid-sub">${kidDateLabel(d)}</div>
+        <div class="kid-country">${d.country}${d.iata ? ' · '+d.iata : ''}</div>
       </div>
     `;
   });
+
+  // Vol retour classique = billet aller-retour depuis le "hub" (première destination du
+  // voyage) : si la dernière étape n'est pas le hub, on repasse forcément par là avant de
+  // rentrer — on le montre ici même si cette étape retour n'a pas encore été ajoutée pour de
+  // vrai (voir le bandeau "Pense au vol retour" au-dessus de l'itinéraire pour l'ajouter).
+  const hub = dests[0];
+  const lastLeg = dests[dests.length-1];
+  const needsHubReturn = hub && lastLeg && hub.id !== lastLeg.id && !(hub.name===lastLeg.name && hub.country===lastLeg.country);
+  if(needsHubReturn){
+    html += `
+      <div class="kid-link">
+        <div class="line"><span class="icon">✈️</span></div>
+        <div class="kid-label">Retour vers ${hub.name} pour le vol</div>
+      </div>
+      <div class="kid-stop">
+        <div class="bubble">📍</div>
+        <div class="kid-name">${hub.name}</div>
+        <div class="kid-sub">Étape retour</div>
+        <div class="kid-country">${hub.country}${hub.iata ? ' · '+hub.iata : ''}</div>
+      </div>
+    `;
+  }
 
   html += `
     <div class="kid-link">
@@ -3447,6 +3823,7 @@ function renderKidTimeline(){
       <div class="bubble">🏠</div>
       <div class="kid-name">${originLabel}</div>
       <div class="kid-sub">On rentre !</div>
+      ${originSub}
     </div>
   `;
 
@@ -3504,14 +3881,18 @@ async function checkRouteFeasibility(originIata, destIata, destCityLabel){
    petite mécanique qui pose les questions dans l'ordre et enchaîne les étapes.
 ============================================================================================ */
 let wizard = null; // { travelersTarget, travelersCreated, groupId, destCount }
+let pendingDestPreselect = null; // { country, cityName } — pré-sélection venant d'une suggestion cliquée
 
 function wizardProgressHTML(step){
   const steps = ['Qui part ?', "D'où ?", 'Où va-t-on ?', 'Les voyageurs'];
-  return `<div style="display:flex;gap:6px;margin-bottom:14px;">
-    ${steps.map((s,i)=> `<div style="flex:1;text-align:center;">
-      <div style="height:4px;border-radius:2px;background:${i<=step?'var(--teal-dark)':'var(--line)'};margin-bottom:4px;"></div>
-      <span style="font-size:10.5px;color:${i<=step?'var(--teal-dark)':'var(--ink-soft)'};">${s}</span>
-    </div>`).join('')}
+  return `<div class="wz-progress">
+    ${steps.map((s,i)=> `
+      ${i>0 ? `<div class="wz-progress-line${i<=step?' done':''}"></div>` : ''}
+      <div class="wz-progress-step${i<step?' done':i===step?' active':''}">
+        <div class="wz-progress-dot">${i<step?'✓':i+1}</div>
+        <span class="wz-progress-label">${s}</span>
+      </div>
+    `).join('')}
   </div>`;
 }
 
@@ -3520,8 +3901,8 @@ function startWizard(){
     ${wizardProgressHTML(0)}
     <h3>🧭 On prépare ton voyage !</h3>
     <div class="sub">Quelques questions rapides, puis on rentre dans le détail étape par étape. Ça prend 2 minutes ⏱️</div>
-    <div class="field"><label>🎒 Vous êtes combien à partir, en tout ?</label><input id="wz-count" type="number" min="1" value="1"></div>
-    <div class="field"><label>👪 Comment appelle-t-on cette bande ?</label><input id="wz-groupname" placeholder="Ex. Famille Dupont, Les copains de Léa…"></div>
+    <div class="field"><label>🎒 Vous êtes combien à partir, en tout ?</label><input id="wz-count" type="number" min="1" value="1"><div id="wz-count-people" style="font-size:22px;margin-top:8px;line-height:1.3;"></div><p class="forecast-note" id="wz-count-hint" style="margin-top:6px;"></p></div>
+    <div class="field"><label>👪 Qui compose ce voyage ? <span id="wz-groupname-hint" style="font-weight:400;color:var(--ink-soft);">(sépare par une virgule pour créer plusieurs groupes)</span></label><input id="wz-groupname" placeholder="Ex. Famille Dupont, Famille Martin, Les copains de Léa…"></div>
     <div class="field">
       <label>🏠 D'où partez-vous ? <span style="font-weight:400;color:var(--ink-soft);">(tu peux le faire plus tard si tu ne sais pas encore)</span></label>
       ${originPickerHTML('wz')}
@@ -3534,12 +3915,31 @@ function startWizard(){
   document.getElementById('overlay').classList.add('show');
   document.getElementById('modalClose').addEventListener('click', ()=>{ wizard = null; closeModal(); });
   wireOriginPicker('wz', ()=>{});
+  const PEOPLE_EMOJIS = ['🧍','🧑','👩','🧑‍🦱','👨‍🦰','🧑‍🦳','👩‍🦱','🧑‍🦲'];
+  function updateWizardCountHint(){
+    const n = Math.max(1, parseInt(document.getElementById('wz-count').value) || 1);
+    const hint = document.getElementById('wz-count-hint');
+    const groupHint = document.getElementById('wz-groupname-hint');
+    const peopleEl = document.getElementById('wz-count-people');
+    if(peopleEl){
+      const shown = Math.min(n, 14);
+      peopleEl.innerHTML = Array.from({length:shown}, (_,i)=> `<span class="wz-person" style="animation-delay:${(i*0.035).toFixed(2)}s">${PEOPLE_EMOJIS[i % PEOPLE_EMOJIS.length]}</span>`).join('')
+        + (n>14 ? ` <span style="font-size:14px;color:var(--ink-soft);vertical-align:middle;">+${n-14}</span>` : '');
+    }
+    if(n === 1){ hint.textContent = '🧍 Voyage en solo — un seul groupe suffit.'; groupHint.textContent = '(facultatif pour un solo)'; }
+    else if(n === 2){ hint.textContent = '💑 Un voyage à deux.'; groupHint.textContent = '(un seul groupe suffit pour un couple)'; }
+    else if(n <= 6){ hint.textContent = '👨‍👩‍👧 Petit groupe — une famille ou une bande d\'amis.'; groupHint.textContent = '(sépare par une virgule si plusieurs familles/couples)'; }
+    else { hint.textContent = `👨‍👩‍👧‍👦 Grand groupe (${n} personnes) — pense à bien séparer chaque famille ou couple ci-dessous, ça facilitera la suite.`; groupHint.textContent = '(sépare chaque famille/couple par une virgule — important pour un grand groupe)'; }
+  }
+  document.getElementById('wz-count').addEventListener('input', updateWizardCountHint);
+  updateWizardCountHint();
   document.getElementById('wz-start-dest').addEventListener('click', ()=>{
     const count = Math.max(1, parseInt(document.getElementById('wz-count').value) || 1);
-    const groupName = document.getElementById('wz-groupname').value.trim() || 'Mon groupe';
-    const group = { id:'g'+Date.now(), name: groupName };
-    state.groups.push(group);
-    wizard = { travelersTarget: count, travelersCreated: 0, groupId: group.id, destCount: 0 };
+    const rawNames = document.getElementById('wz-groupname').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const names = (rawNames.length ? rawNames : ['Mon groupe']).map(capitalizeWords).sort((a,b)=> a.localeCompare(b, 'fr'));
+    const groups = names.map((name,i)=>({ id:'g'+Date.now()+'-'+i, name }));
+    groups.forEach(g=> state.groups.push(g));
+    wizard = { travelersTarget: count, travelersCreated: 0, groupIds: groups.map(g=>g.id), destCount: 0 };
     autosave();
     closeModal();
     showToast(`Première étape : où allez-vous ? Ajoute votre première destination 🌍`);
@@ -3554,17 +3954,19 @@ function wizardAskAnotherDestination(){
     ${wizardProgressHTML(2)}
     <h3>${funLines[wizard.destCount % funLines.length]}</h3>
     <div class="sub">✅ ${wizard.destCount} destination${wizard.destCount>1?'s':''} déjà ajoutée${wizard.destCount>1?'s':''}. Ajoute-en une de plus, ou passe à la suite si ton itinéraire est complet.</div>
+    <div id="wz-suggestions"></div>
     <div class="modal-actions">
       <button class="btn ghost small" id="wz-no-more-dest">Non, c'est tout →</button>
       <button class="btn small" id="wz-more-dest">+ Ajouter une ville</button>
     </div>
   `;
   document.getElementById('overlay').classList.add('show');
+  renderWizardDestSuggestions();
   document.getElementById('wz-more-dest').addEventListener('click', ()=>{ closeModal(); document.getElementById('addDestBtn').click(); });
   document.getElementById('wz-no-more-dest').addEventListener('click', ()=>{
     closeModal();
     showToast(`Dernière étape : présente-nous ${wizard.travelersTarget>1?'tes '+wizard.travelersTarget+' voyageurs':'le voyageur'} 🧑‍🤝‍🧑`);
-    openAddTravelerModal(wizard.groupId);
+    openAddTravelerModal(wizard.groupIds[0]);
   });
 }
 
@@ -3572,6 +3974,49 @@ function wizardFinish(){
   wizard = null;
   switchView('dashboard');
   showToast('🎉 Ton voyage est prêt ! Explore les onglets pour affiner chaque détail — rien n\'est figé.');
+}
+
+/* Suggestions après une destination : villes internes du même pays (excursion, ex. Bangkok
+   -> Phuket ou Koh Samui) et autres pays accessibles en direct depuis là où on est déjà —
+   pour éviter de deviner et taper le nom d'une ville/pays au hasard. */
+async function renderWizardDestSuggestions(){
+  const box = document.getElementById('wz-suggestions');
+  if(!box) return;
+  const lastLeg = getLastLeg();
+  if(!lastLeg){ box.innerHTML = ''; return; }
+  const visitedCityKeys = new Set(state.destinations.map(d=> d.name+'|'+d.country));
+  const visitedCountries = new Set(state.destinations.map(d=> d.country));
+
+  const internalCities = (GEO_DATA[lastLeg.country]?.cities || []).filter(c=> !visitedCityKeys.has(c.name+'|'+lastLeg.country));
+
+  box.innerHTML = `
+    ${internalCities.length ? `
+      <p class="forecast-note" style="margin-top:4px;">🏝️ Autres villes de ${lastLeg.country} :
+        ${internalCities.map(c=>`<button class="link-btn" data-sugg-internal="${c.name}">${c.name}</button>`).join(' · ')}
+      </p>` : ''}
+    <p class="forecast-note" id="wz-sugg-external"></p>
+  `;
+  box.querySelectorAll('[data-sugg-internal]').forEach(btn=> btn.addEventListener('click', ()=>{
+    pendingDestPreselect = { country: lastLeg.country, cityName: btn.dataset.suggInternal };
+    closeModal();
+    document.getElementById('addDestBtn').click();
+  }));
+
+  if(!lastLeg.iata) return;
+  try{
+    const reachableCountries = await getReachableCountries(lastLeg.iata);
+    const externalCountries = [...reachableCountries].filter(c=> !visitedCountries.has(c)).slice(0,6);
+    const externalEl = document.getElementById('wz-sugg-external');
+    if(externalEl && externalCountries.length){
+      externalEl.innerHTML = `🌍 Autres pays accessibles depuis ${lastLeg.iata} :
+        ${externalCountries.map(c=>`<button class="link-btn" data-sugg-external="${c}">${c}</button>`).join(' · ')}`;
+      externalEl.querySelectorAll('[data-sugg-external]').forEach(btn=> btn.addEventListener('click', ()=>{
+        pendingDestPreselect = { country: btn.dataset.suggExternal, cityName: null };
+        closeModal();
+        document.getElementById('addDestBtn').click();
+      }));
+    }
+  }catch(err){ console.error(err); }
 }
 
 document.getElementById('addDestBtn').addEventListener('click', ()=>{
@@ -3609,48 +4054,38 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
     ${wizard ? wizardProgressHTML(2) : ''}
     <h3>Ajouter une destination</h3>
     <div class="sub">Choisis le pays puis la ville dans les listes — ça évite les fautes de frappe et remplit automatiquement le code aéroport.</div>
-    ${uniqueVisitedCities.length ? `
-    <div class="field" style="background:var(--amber-soft);border-radius:8px;padding:10px 12px;">
-      <label>Cette étape, c'est un retour vers une ville déjà visitée ?</label>
-      <select id="nd-revisit-select">
-        <option value="">— Non, une nouvelle ville —</option>
-        ${uniqueVisitedCities.map((c,i)=>`<option value="${i}">${c.name}, ${c.country}${c.iata?' ('+c.iata+')':''}</option>`).join('')}
-      </select>
-      <p class="forecast-note" style="margin-top:6px;">Pratique pour une excursion interne — ex. tu pars visiter Chiang Mai puis tu reviens à Bangkok avant de repartir ailleurs (ou de rentrer). Choisis "nouvelle ville" pour continuer vers un autre endroit, comme Phuket.</p>
-    </div>` : ''}
-    <div class="field" style="background:var(--paper);border-radius:8px;padding:10px 12px;">
-      <label>Cette étape part de :</label>
-      ${legOriginLabel ? `
-        <p class="forecast-note" style="margin:2px 0 8px 0;"><b id="nd-legorigin-display">${legOriginIata || '?'}</b> — ${legOriginLabel} — <button type="button" class="link-btn" id="nd-legorigin-override-btn">pas correct ?</button></p>
-        <div id="nd-legorigin-override" style="display:none;">
-          <input id="nd-legorigin-input" placeholder="Code IATA, ex. BKK" maxlength="3" style="width:110px;text-transform:uppercase;">
-          <p class="forecast-note" style="margin-top:4px;">Utile si tu ne pars pas exactement de ta dernière étape (ex. correspondance depuis un autre aéroport).</p>
-        </div>
-      ` : `
-        <p class="forecast-note" style="margin:2px 0 8px 0;">Aéroport de départ pas encore connu.</p>
-        ${originPickerHTML('ndorig')}
-      `}
-      <p class="forecast-note" style="margin-top:6px;">Sert à vérifier si un vol vers la destination choisie a déjà été référencé, et à proposer des alternatives sinon.</p>
+    <p class="forecast-note" style="margin-bottom:10px;">
+      ${legOriginLabel
+        ? `Départ de cette étape : <b id="nd-legorigin-display">${legOriginIata || '?'}</b> (${legOriginLabel}) — <button type="button" class="link-btn" id="nd-legorigin-override-btn">pas correct ?</button>`
+        : `Aéroport de départ pas encore connu — <button type="button" class="link-btn" id="nd-legorigin-origin-btn">le renseigner</button>`}
+    </p>
+    <div id="nd-legorigin-override" style="display:none;margin-bottom:10px;">
+      <input id="nd-legorigin-input" placeholder="Code IATA, ex. BKK" maxlength="3" style="width:110px;text-transform:uppercase;">
+      <p class="forecast-note" style="margin-top:4px;">Utile si tu ne pars pas exactement de ta dernière étape (ex. correspondance depuis un autre aéroport).</p>
     </div>
+    <div id="nd-legorigin-picker" style="display:none;margin-bottom:10px;">${originPickerHTML('ndorig')}</div>
     <div class="field"><label>Pays</label>
       <select id="nd-country">
         <option value="">— choisir un pays —</option>
         ${COUNTRY_LIST.map(c=>`<option value="${c}">${c}</option>`).join('')}
       </select>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;color:var(--ink-soft);margin-top:6px;">
-        <input type="checkbox" id="nd-country-filter-toggle" ${legOriginIata?'checked':'disabled'}>
-        Ne montrer que les pays desservis en direct depuis ${legOriginIata||'cette étape'}
-      </label>
       <p id="nd-country-filter-note" class="forecast-note" style="margin-top:4px;"></p>
     </div>
     <div class="field">
       <label>Ville</label>
+      ${uniqueVisitedCities.length ? `
+      <p class="forecast-note" style="margin-bottom:6px;">Une escale ou un retour vers une ville déjà visitée ?
+        <select id="nd-revisit-select" style="font-size:12px;padding:2px 4px;">
+          <option value="">— non, nouvelle ville —</option>
+          ${uniqueVisitedCities.map((c,i)=>`<option value="${i}">${c.name}, ${c.country}${c.iata?' ('+c.iata+')':''}</option>`).join('')}
+        </select>
+      </p>` : ''}
+      <select id="nd-city" disabled style="margin-bottom:8px;"><option value="">— choisis d'abord un pays —</option></select>
       <div style="display:flex;gap:8px;">
-        <input id="nd-city-search" placeholder="Tape le nom de la ville…" style="flex:1;">
+        <input id="nd-city-search" placeholder="Ou tape le nom d'une autre ville…" style="flex:1;">
         <button type="button" class="btn ghost small" id="nd-city-search-btn">Rechercher</button>
       </div>
-      <select id="nd-city" disabled style="margin-top:8px;"><option value="">— cherche une ville ci-dessus —</option></select>
-      <p class="forecast-note" style="margin-top:6px;">Recherche en direct (couvre pratiquement toutes les villes du monde) — choisis toujours la bonne dans la liste avant de continuer.</p>
+      <p class="forecast-note" style="margin-top:6px;">La liste propose d'abord les villes courantes du pays choisi — utilise la recherche si la tienne n'y est pas.</p>
     </div>
     <div class="field"><label>Aéroport le plus proche (calculé automatiquement)</label><input id="nd-iata" readonly style="background:#f0ede4;color:var(--ink-soft);"></div>
     <div id="nd-route-note"></div>
@@ -3670,10 +4105,20 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
     </div>
     <div class="field">
       <label>Moyen(s) de transport</label>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;">
-        ${TRANSPORT_MODES.map((m)=>`<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:400;color:var(--ink);"><input type="checkbox" class="nd-transport-cb" value="${m}" ${lastModes.includes(m)?'checked':''}> ${m}</label>`).join('')}
+      <div class="transport-picker">
+        ${TRANSPORT_MODES.map((m)=>`
+          <label class="transport-chip${lastModes.includes(m)?' selected':''}">
+            <input type="checkbox" class="nd-transport-cb" value="${m}" ${lastModes.includes(m)?'checked':''}>
+            <span class="tc-icon">${TRANSPORT_ICONS[m]||'🚗'}</span>
+            <span class="tc-label">${m}</span>
+          </label>
+        `).join('')}
       </div>
       <p class="forecast-note" style="margin-top:6px;">Le dernier choix est mémorisé pour la prochaine étape — change-le seulement si besoin.</p>
+      <div id="nd-stopover-field" style="display:${lastModes.includes('Avion')?'block':'none'};margin-top:10px;">
+        <label style="font-size:12.5px;">Vol avec escale ? <span style="font-weight:400;color:var(--ink-soft);">(facultatif)</span></label>
+        <input id="nd-stopover" placeholder="Ex. Doha, Dubaï…" style="max-width:220px;">
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn ghost small" id="modalClose">Annuler</button>
@@ -3698,10 +4143,17 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
       input.addEventListener('change', ()=>{
         legOriginIata = input.value.trim().toUpperCase();
         document.getElementById('nd-legorigin-display').textContent = legOriginIata || '?';
-        refreshCountryFilter();
+        refreshCountryOrder();
         const destIata = currentDestIata();
         if(destIata) checkRouteFeasibility(legOriginIata, destIata, document.getElementById('nd-city-search').value);
       });
+    });
+  }
+  const legOriginOriginBtn = document.getElementById('nd-legorigin-origin-btn');
+  if(legOriginOriginBtn){
+    legOriginOriginBtn.addEventListener('click', ()=>{
+      document.getElementById('nd-legorigin-picker').style.display = 'block';
+      legOriginOriginBtn.style.display = 'none';
     });
   }
 
@@ -3781,10 +4233,23 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
       if(match) countrySel.value = match.value;
     }
     const frame = document.getElementById('nd-map');
+    iataInput.dataset.timezone = city.timezone || '';
+    if(city.latitude==null || city.longitude==null){
+      // Ville préréglée (liste courante du pays) : aéroport déjà connu, pas besoin de géocoder.
+      if(frame) frame.src = `https://www.google.com/maps?q=${encodeURIComponent(city.name+', '+(city.country||''))}&output=embed`;
+      if(city.iata){
+        iataInput.value = `${city.iata} — aéroport principal (préréglé)`;
+        iataInput.dataset.iata = city.iata;
+        if(legOriginIata) checkRouteFeasibility(legOriginIata, city.iata, city.name);
+      } else {
+        iataInput.value = '';
+        iataInput.dataset.iata = '';
+      }
+      return;
+    }
     if(frame) frame.src = `https://www.google.com/maps?q=${city.latitude},${city.longitude}&output=embed`;
     iataInput.value = "Recherche de l'aéroport le plus proche…";
     iataInput.dataset.iata = '';
-    iataInput.dataset.timezone = city.timezone || '';
     try{
       const airport = await findNearestAirport(city.latitude, city.longitude);
       if(airport){
@@ -3800,54 +4265,81 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
     }
   });
 
-  async function refreshCountryFilter(){
-    const toggle = document.getElementById('nd-country-filter-toggle');
+  async function refreshCountryOrder(){
     const countrySel = document.getElementById('nd-country');
     const note = document.getElementById('nd-country-filter-note');
     const previousValue = countrySel.value;
-    if(toggle.checked && legOriginIata){
-      countrySel.innerHTML = '<option value="">Chargement des pays desservis…</option>';
-      note.textContent = '';
+    if(legOriginIata){
       try{
         const reachableCountries = await getReachableCountries(legOriginIata);
-        const list = COUNTRY_LIST.filter(c=> reachableCountries.has(c));
-        countrySel.innerHTML = '<option value="">— choisir un pays —</option>' + list.map(c=>`<option value="${c}">${c}</option>`).join('');
-        if(list.includes(previousValue)) countrySel.value = previousValue;
-        note.textContent = list.length ? `${list.length} pays desservis en direct depuis ${legOriginIata} (base OpenFlights).` : `Aucun pays avec vol direct référencé depuis ${legOriginIata} — décoche la case pour voir tous les pays.`;
+        const reachable = COUNTRY_LIST.filter(c=> reachableCountries.has(c));
+        const others = COUNTRY_LIST.filter(c=> !reachableCountries.has(c));
+        countrySel.innerHTML = '<option value="">— choisir un pays —</option>'
+          + (reachable.length ? `<optgroup label="✈️ Vols directs depuis ${legOriginIata}">${reachable.map(c=>`<option value="${c}">${c}</option>`).join('')}</optgroup>` : '')
+          + `<optgroup label="🌍 Tous les autres pays">${others.map(c=>`<option value="${c}">${c}</option>`).join('')}</optgroup>`;
+        if(COUNTRY_LIST.includes(previousValue)) countrySel.value = previousValue;
+        note.textContent = reachable.length ? `${reachable.length} pays avec vol direct depuis ${legOriginIata} mis en avant (base OpenFlights) — tous les pays du monde restent disponibles en dessous.` : '';
       }catch(err){
         console.error(err);
         countrySel.innerHTML = '<option value="">— choisir un pays —</option>' + COUNTRY_LIST.map(c=>`<option value="${c}">${c}</option>`).join('');
-        note.textContent = "Impossible de filtrer pour l'instant (connexion) — liste complète affichée.";
+        if(COUNTRY_LIST.includes(previousValue)) countrySel.value = previousValue;
+        note.textContent = '';
       }
     } else {
       countrySel.innerHTML = '<option value="">— choisir un pays —</option>' + COUNTRY_LIST.map(c=>`<option value="${c}">${c}</option>`).join('');
       if(COUNTRY_LIST.includes(previousValue)) countrySel.value = previousValue;
-      note.textContent = toggle.checked ? "Renseigne d'abord un aéroport de départ." : '';
+      note.textContent = '';
     }
   }
-  document.getElementById('nd-country-filter-toggle').addEventListener('change', refreshCountryFilter);
+  document.querySelectorAll('.transport-chip .nd-transport-cb').forEach(cb=> cb.addEventListener('change', ()=>{
+    cb.closest('.transport-chip').classList.toggle('selected', cb.checked);
+    const avionChecked = document.querySelector('.nd-transport-cb[value="Avion"]').checked;
+    document.getElementById('nd-stopover-field').style.display = avionChecked ? 'block' : 'none';
+  }));
 
   wireOriginPicker('ndorig', (iata)=>{
     legOriginIata = iata;
     const destIata = currentDestIata();
     if(destIata) checkRouteFeasibility(iata, destIata, document.getElementById('nd-city-search').value);
-    const toggle = document.getElementById('nd-country-filter-toggle');
-    toggle.disabled = false;
-    toggle.checked = true;
-    toggle.parentElement.lastChild.textContent = ` Ne montrer que les pays desservis en direct depuis ${iata}`;
-    refreshCountryFilter();
+    refreshCountryOrder();
     renderKidTimeline();
   });
-  refreshCountryFilter();
+  (async ()=>{
+    await refreshCountryOrder();
+    if(pendingDestPreselect){
+      const preselect = pendingDestPreselect;
+      pendingDestPreselect = null;
+      const countrySel = document.getElementById('nd-country');
+      if(countrySel){
+        countrySel.value = preselect.country;
+        countrySel.dispatchEvent(new Event('change'));
+        if(preselect.cityName){
+          const citySel = document.getElementById('nd-city');
+          const idx = cityGeoResults.findIndex(c=> c.name === preselect.cityName);
+          if(citySel && idx >= 0){ citySel.value = String(idx); citySel.dispatchEvent(new Event('change')); }
+        }
+      }
+    }
+  })();
 
   document.getElementById('nd-country').addEventListener('change', e=>{
     document.getElementById('nd-city-search').value = '';
-    document.getElementById('nd-city').innerHTML = '<option value="">— cherche une ville ci-dessus —</option>';
-    document.getElementById('nd-city').disabled = true;
     document.getElementById('nd-iata').value = ''; document.getElementById('nd-iata').dataset.iata = '';
     document.getElementById('nd-route-note').innerHTML = '';
+    const citySel = document.getElementById('nd-city');
+    const country = e.target.value;
+    const preset = GEO_DATA[country];
+    if(preset && preset.cities && preset.cities.length){
+      cityGeoResults = preset.cities.map(c=>({ name:c.name, country, latitude:null, longitude:null, timezone:null, iata:c.iata }));
+      citySel.innerHTML = '<option value="">— choisir une ville —</option>' + cityGeoResults.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
+      citySel.disabled = false;
+    } else {
+      cityGeoResults = [];
+      citySel.innerHTML = '<option value="">— cherche une ville ci-dessous —</option>';
+      citySel.disabled = true;
+    }
     const frame = document.getElementById('nd-map');
-    if(frame && e.target.value) frame.src = `https://www.google.com/maps?q=${encodeURIComponent(e.target.value)}&output=embed`;
+    if(frame && country) frame.src = `https://www.google.com/maps?q=${encodeURIComponent(country)}&output=embed`;
   });
   document.getElementById('nd-map').src = 'https://www.google.com/maps?q=Europe&output=embed';
   document.getElementById('nd-route-note').innerHTML = state.settings.originIata ? '' : '<p class="forecast-note">Renseigne ton aéroport de départ ci-dessus pour vérifier la faisabilité du trajet.</p>';
@@ -3866,8 +4358,9 @@ document.getElementById('addDestBtn').addEventListener('click', ()=>{
     const transportModes = Array.from(document.querySelectorAll('.nd-transport-cb:checked')).map(cb=>cb.value);
     const transport = transportModes.length ? transportModes.join(' + ') : 'À définir';
     if(transportModes.length) state.settings.lastTransportModes = transportModes;
+    const stopover = transportModes.includes('Avion') ? document.getElementById('nd-stopover').value.trim() : '';
     const id = 'd'+Date.now();
-    state.destinations.push({id, name, country, start, end, transport, transportModes, iata, lat:city.latitude, lon:city.longitude, timezone: currentDestTimezone()});
+    state.destinations.push({id, name, country, start, end, transport, transportModes, iata, lat:city.latitude, lon:city.longitude, timezone: currentDestTimezone(), stopover: stopover || null});
 
     const rnd = seedRand(id.length*13 + id.charCodeAt(1));
     if(!state.settings.realDataOnly){
@@ -3919,73 +4412,23 @@ function renderShareQrCode(){
   el.innerHTML = `<img src="${url}" alt="QR code du voyage" width="140" height="140" style="border-radius:8px;">`;
 }
 
-/* ============================ CARTES DE L'ITINÉRAIRE (dashboard) ============================
-   Un seul monde-carte ne fonctionne pas quand les étapes sont très éloignées
-   (ex. Réunion + Thaïlande) : soit tout est minuscule, soit une bonne partie
-   sort du cadre. Solution : regrouper les destinations par zone géographique
-   (distance < 3000 km = même groupe) et afficher une carte zoomée par groupe,
-   plus une vue d'ensemble globale pour le contexte général.
-   Service utilisé : staticmap.openstreetmap.de (public, gratuit, sans clé).
-================================================================================================= */
-function clusterDestinationsByRegion(points){
-  const clusters = [];
-  points.forEach(p=>{
-    let target = clusters.find(c=> c.some(q=> haversineKm(p.lat,p.lon,q.lat,q.lon) < 3000));
-    if(target) target.push(p); else clusters.push([p]);
-  });
-  return clusters;
-}
-function staticMapUrl(points, size){
-  if(!points.length) return '';
-  const lats = points.map(p=>p.lat), lons = points.map(p=>p.lon);
-  const centerLat = (Math.min(...lats)+Math.max(...lats))/2;
-  const centerLon = (Math.min(...lons)+Math.max(...lons))/2;
-  const spanLat = Math.max(...lats)-Math.min(...lats);
-  const spanLon = Math.max(...lons)-Math.min(...lons);
-  const span = Math.max(spanLat, spanLon, 0.3);
-  let zoom = 11;
-  if(span > 1) zoom = 8; if(span > 5) zoom = 6; if(span > 15) zoom = 4; if(span > 40) zoom = 3; if(span > 90) zoom = 2;
-  const markers = points.map((p,i)=> `${p.lat},${p.lon},${i===0 && p.home ? 'lightblue1':'redpin'}`).join('|');
-  return `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat},${centerLon}&zoom=${zoom}&size=${size||'400x220'}&maptype=mapnik&markers=${markers}`;
-}
-function renderItineraryMaps(){
-  const wrap = document.getElementById('dashItineraryMaps');
-  if(!wrap) return;
-  loadAirportsData(); // s'assure que les coordonnées de l'aéroport de départ sont disponibles (mise en cache)
-  const points = state.destinations.filter(d=> d.lat!=null && d.lon!=null).map(d=> ({lat:d.lat, lon:d.lon, name:d.name}));
-  const originAirport = state.settings.originIata && AIRPORT_DATA.byIata ? AIRPORT_DATA.byIata[state.settings.originIata] : null;
-  if(originAirport){
-    points.unshift({lat:originAirport.lat, lon:originAirport.lon, name:'Chez toi ('+state.settings.originIata+')', home:true});
-  }
-  if(!points.length){ wrap.innerHTML = '<p class="dash-empty">Ajoute des destinations pour voir la carte.</p>'; return; }
-
-  const clusters = clusterDestinationsByRegion(points);
-  let html = '';
-  if(clusters.length > 1){
-    html += `<p class="forecast-note" style="margin-bottom:10px;">Ton voyage couvre des zones trop éloignées pour tenir sur une seule carte lisible (ex. Réunion + Thaïlande) — voici une carte par zone, plus une vue d'ensemble.</p>`;
-    html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">`;
-    clusters.forEach(c=>{
-      html += `<div><img src="${staticMapUrl(c, '400x220')}" style="width:100%;border-radius:8px;border:1px solid var(--line);" alt="Carte"><p class="forecast-note" style="margin-top:4px;text-align:center;">${c.map(p=>p.name).join(' · ')}</p></div>`;
-    });
-    html += `</div>`;
-    html += `<p class="forecast-note" style="margin-top:10px;">Vue d'ensemble (très zoomée, juste pour le contexte) :</p><img src="${staticMapUrl(points,'700x200')}" style="width:100%;border-radius:8px;border:1px solid var(--line);" alt="Vue d'ensemble">`;
-  } else {
-    html += `<img src="${staticMapUrl(points, '700x320')}" style="width:100%;border-radius:8px;border:1px solid var(--line);" alt="Carte de l'itinéraire">`;
-  }
-  wrap.innerHTML = html;
-}
-
 function renderDashboard(){
   const grid = document.getElementById('dashGrid');
   const missingDocsTravelers = state.travelers.filter(t=> docCompleteness(t).done < docCompleteness(t).total);
   const placedCount = Object.values(state.placements).reduce((n,arr)=> n + arr.length, 0);
-  const tzDiffs = state.destinations.map(d=>({ dest:d, tz: tzDiffInfo(d.timezone) })).filter(x=> x.tz && !x.tz.sameZone);
+  const tzGroups = {};
+  state.destinations.forEach(d=>{
+    if(!d.timezone) return;
+    if(!tzGroups[d.timezone]) tzGroups[d.timezone] = { timezone:d.timezone, names:[], tz: tzDiffInfo(d.timezone) };
+    if(!tzGroups[d.timezone].names.includes(d.name)) tzGroups[d.timezone].names.push(d.name);
+  });
+  const tzDiffs = Object.values(tzGroups);
 
   grid.innerHTML = `
     <div class="dash-card">
       <div class="dc-head"><h3>Destinations</h3></div>
       <div class="dc-num">${state.destinations.length}</div>
-      <div class="dc-sub">${state.destinations.length ? state.destinations.map(d=>d.name).join(' · ') : 'Aucune pour l\'instant'}</div>
+      <div class="dc-sub">${destinationsSummaryLabel()}</div>
       <button class="btn ghost small dc-shortcut" data-goto="itineraire">Voir l'itinéraire →</button>
     </div>
 
@@ -4016,14 +4459,13 @@ function renderDashboard(){
     </div>
 
     <div class="dash-card">
-      <div class="dc-head"><h3>Météo &amp; prix</h3></div>
+      <div class="dc-head"><h3>Météo</h3></div>
       <div class="dash-list">
         ${state.destinations.length ? state.destinations.map(d=>{
           const cacheKey = `${d.id}|${d.start}|${d.end}`;
           const real = REALWX_CACHE[cacheKey];
-          const wEntry = state.weather.find(w=>w.destId===d.id) || {};
-          const tempLabel = real ? `${real.tempMin}°–${real.tempMax}°C` : (wEntry.tempAvg ? `~${wEntry.tempAvg}°C (à confirmer)` : '—');
-          return `<div class="dash-row"><span>${d.name} · ${tempLabel}</span>${wEntry.priceLevel ? `<span class="wx-badge ${badgeClass(wEntry.priceLevel)}" style="font-size:10px;">${priceLabel(wEntry.priceLevel)}</span>` : ''}</div>`;
+          const tempLabel = real ? `${real.tempMin}°–${real.tempMax}°C` : '—';
+          return `<div class="dash-row"><span>${d.name} · ${tempLabel}</span></div>`;
         }).join('') : '<div class="dash-empty">Ajoutez une destination pour voir sa météo</div>'}
       </div>
       <button class="btn ghost small dc-shortcut" data-goto="meteo">Voir le détail →</button>
@@ -4049,9 +4491,24 @@ function renderDashboard(){
     ${tzDiffs.length ? `
     <div class="dash-card dash-wide">
       <div class="dc-head"><h3>🕐 Décalages horaires</h3></div>
-      <div class="dc-sub" style="margin-bottom:8px;">Chez toi, il est actuellement ${localTimeInTz(HOME_TIMEZONE)}.</div>
-      <div class="dash-list">
-        ${tzDiffs.map(x=>`<div class="dash-row"><span>${x.dest.name} — il est ${localTimeInTz(x.dest.timezone)} là-bas</span><b>${x.tz.label}</b></div>`).join('')}
+      <div class="dc-sub" style="margin-bottom:10px;">L'heure actuelle à chaque étape de ton voyage.</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;">
+        ${(()=>{ const home = localHourMinuteInTz(HOME_TIMEZONE); return `
+          <div style="display:flex;flex-direction:column;align-items:center;width:90px;text-align:center;">
+            ${analogClockSVG(home.h, home.m, 64)}
+            <div style="font-weight:700;font-size:12px;margin-top:4px;">Chez toi</div>
+            <div style="font-size:11px;color:var(--ink-soft);">${localTimeInTz(HOME_TIMEZONE)}</div>
+          </div>
+        `; })()}
+        ${tzDiffs.map(x=>{
+          const t = localHourMinuteInTz(x.timezone);
+          return `
+          <div style="display:flex;flex-direction:column;align-items:center;width:90px;text-align:center;">
+            ${analogClockSVG(t.h, t.m, 64)}
+            <div style="font-weight:700;font-size:12px;margin-top:4px;">${x.names.join(', ')}</div>
+            <div style="font-size:11px;color:var(--ink-soft);">${localTimeInTz(x.timezone)}${x.tz && !x.tz.sameZone ? ' · '+x.tz.label : ''}</div>
+          </div>`;
+        }).join('')}
       </div>
     </div>` : ''}
 
@@ -4063,25 +4520,17 @@ function renderDashboard(){
     </div>
 
     <div class="dash-card dash-wide">
-      <div class="dc-head"><h3>🗺️ Itinéraire sur la carte</h3></div>
-      <div id="dashItineraryMaps"></div>
-      <button class="btn ghost small dc-shortcut" data-goto="itineraire">Voir le détail des étapes →</button>
-    </div>
-
-    <div class="dash-card dash-wide">
       <div class="dc-head"><h3>Sauvegardes</h3></div>
       <div class="dc-sub" id="dashBackupSummary">Chargement des sauvegardes…</div>
+      <div class="dc-sub" style="margin-top:4px;">Le dossier est enregistré automatiquement à chaque modification — pas besoin de cliquer sur "sauvegarder".</div>
       <div style="display:flex;gap:8px;margin-top:10px;">
-        <button class="btn small" id="dashSaveNow">💾 Sauvegarder maintenant</button>
         <button class="btn ghost small" id="dashOpenHistory">Voir l'historique →</button>
       </div>
     </div>
   `;
-  renderItineraryMaps();
   renderShareQrCode();
   grid.querySelectorAll('[data-goto]').forEach(btn=> btn.addEventListener('click', ()=> switchView(btn.dataset.goto)));
   document.getElementById('dashShareBtn').addEventListener('click', renderShareQrCode);
-  document.getElementById('dashSaveNow').addEventListener('click', async ()=>{ await createBackup(); renderDashboard(); });
   document.getElementById('dashOpenHistory').addEventListener('click', openHistoryModal);
 
   listBackups().then(backups=>{
@@ -4333,7 +4782,35 @@ function totalTicketsCostForTraveler(t){
   return state.flightTickets.filter(tk=> ticketAppliesTo(tk,t)).reduce((s,tk)=> s+ticketPriceForTraveler(tk,t), 0);
 }
 
+function renderTicketRealPrices(){
+  const wrap = document.getElementById('ticketRealPrices');
+  if(!wrap) return;
+  const dests = [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start)).filter(d=> (d.transportModes||[]).includes('Avion'));
+  if(!dests.length){ wrap.innerHTML = '<p class="dash-empty">Aucune étape en avion pour l\'instant.</p>'; return; }
+  wrap.innerHTML = dests.map(d=> `
+    <div class="dash-row" style="flex-wrap:wrap;gap:8px;" data-ticketprice-row="${d.id}">
+      <span>${d.name}${d.iata?' ('+d.iata+')':''}</span>
+      ${d.realFlightPrice
+        ? `<b>${d.realFlightPrice}€/pers. · ${d.realFlightAirline} <span style="font-weight:400;color:var(--ink-soft);font-size:10px;">(${d.realFlightSource||'?'})</span> <button class="link-btn" style="font-size:10px;" data-tpeditflightprice="${d.id}">modifier</button></b>`
+        : `<span><button class="link-btn" style="font-size:11px;" data-tpfindflight="${d.id}">Travelpayouts →</button> <button class="link-btn" style="font-size:11px;" data-tpfindflightduffel="${d.id}">Duffel →</button></span>`}
+    </div>
+  `).join('');
+  wrap.querySelectorAll('[data-tpfindflight]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const dest = state.destinations.find(x=>x.id===btn.dataset.tpfindflight);
+    if(dest) fetchRealFlight(dest);
+  }));
+  wrap.querySelectorAll('[data-tpfindflightduffel]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const dest = state.destinations.find(x=>x.id===btn.dataset.tpfindflightduffel);
+    if(dest) fetchDuffelFlight(dest);
+  }));
+  wrap.querySelectorAll('[data-tpeditflightprice]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const dest = state.destinations.find(x=>x.id===btn.dataset.tpeditflightprice);
+    if(dest){ delete dest.realFlightPrice; autosave(); renderTicketRealPrices(); }
+  }));
+}
+
 function renderTickets(){
+  renderTicketRealPrices();
   const list = document.getElementById('ticketsList');
   const linksWrap = document.getElementById('ticketQuoteLinks');
   if(!list || !linksWrap) return;
@@ -5045,6 +5522,7 @@ function renderAll(){
   renderTopChips();
   renderTripDateRange();
   renderOriginBanner();
+  renderHubReturnBanner();
   renderKidTimeline();
   renderDestRow();
   renderLegs();
