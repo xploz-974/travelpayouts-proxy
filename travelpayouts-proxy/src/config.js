@@ -22,6 +22,8 @@ export const BOOKING_BASE_URL = BOOKING_ENV === 'production'
 
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+export const SERPAPI_KEY = process.env.SERPAPI_KEY;
+
 export const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
 export const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
 export const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
@@ -47,5 +49,8 @@ export function warnMissingConfig() {
   }
   if (!GEMINI_API_KEY) {
     console.warn('⚠️  GEMINI_API_KEY manquant dans .env — /api/ai/vision et /api/ai/ask échoueront.');
+  }
+  if (!SERPAPI_KEY) {
+    console.warn('⚠️  SERPAPI_KEY manquant dans .env — /api/google-hotels échouera.');
   }
 }
