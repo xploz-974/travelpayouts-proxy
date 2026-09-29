@@ -30,6 +30,7 @@ googleHotelsRouter.get('/api/google-hotels', async (req, res) => {
       name: p.name,
       price: (p.rate_per_night?.extracted_lowest) ?? (p.total_rate?.extracted_lowest) ?? 0,
       rating: p.overall_rating || null,
+      url: p.link || null,
     }));
     res.json({ results });
   } catch (err) {

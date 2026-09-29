@@ -456,10 +456,6 @@ input,select,textarea{font-family:inherit;}
         <div class="dest-row" id="destRow"></div>
 
         <div id="legsWrap" style="margin-top:18px;"></div>
-
-        <div class="itinerary-grid itinerary-grid-solo">
-          <div class="days" id="daysCol"></div>
-        </div>
       </div>
 
       <!-- BILLETS D'AVION -->
@@ -527,8 +523,11 @@ input,select,textarea{font-family:inherit;}
           <button class="btn ghost small" id="googleHotelsSearchBtn">🔍 Chercher sur Google Hotels (1 destination)</button>
           <span class="forecast-note" style="margin:0;" id="googleHotelsQuota"></span>
         </div>
-        <div class="stay-list" id="fullStayList" style="max-height:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;"></div>
-        <p class="forecast-note">Note technique — brancher de vraies données ici demande un backend qui interroge : l'API Amadeus / Booking.com Affiliate / Expedia Rapid pour les hôtels, l'API Airbnb (via un partenaire agréé, pas d'API publique officielle) et SerpApi "Google Hotels" pour agréger Google. Le front reste identique : seule la source des cartes change.</p>
+        <p class="forecast-note">Glisse une carte d'hébergement sur une ville à droite pour l'assigner à tout le séjour là-bas (ou déplie une ville pour l'assigner à un jour précis).</p>
+        <div class="itinerary-grid">
+          <div class="stay-list" id="fullStayList" style="max-height:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;align-content:start;"></div>
+          <div class="days" id="daysCol"></div>
+        </div>
       </div>
 
       <!-- METEO -->
@@ -2227,7 +2226,35 @@ function openEditDestDatesModal(destId){
 }
 
 /* ---------------- stay card ---------------- */
+/* Lien "Voir avec ces dates" : reprend le lien direct renvoyé par l'API source
+   quand il existe (ex. SerpApi Google Hotels), sinon reconstruit une recherche
+   sur le site correspondant avec les vraies dates du séjour et le nombre réel
+   de voyageurs du dossier — jamais un lien générique sans contexte. */
+function bookingSearchUrl(stay){
+  if(stay.url) return stay.url;
+  const dest = state.destinations.find(d=>d.id===stay.destId);
+  const checkin = dest ? dest.start : '';
+  const checkout = dest ? dest.end : '';
+  const adults = state.travelers.length || 1;
+  const place = dest ? dest.name : '';
+  const q = encodeURIComponent(`${stay.name}${place ? ' '+place : ''}`.trim());
+  switch(stay.source){
+    case 'Booking':
+      return `https://www.booking.com/searchresults.html?ss=${q}${checkin?'&checkin='+checkin:''}${checkout?'&checkout='+checkout:''}&group_adults=${adults}&no_rooms=1`;
+    case 'Airbnb':
+      return `https://www.airbnb.fr/s/${encodeURIComponent(place||stay.name)}/homes?query=${q}${checkin?'&checkin='+checkin:''}${checkout?'&checkout='+checkout:''}&adults=${adults}`;
+    case 'Agoda':
+      return `https://www.agoda.com/search?text=${q}${checkin?'&checkIn='+checkin:''}${checkout?'&checkOut='+checkout:''}&adults=${adults}&rooms=1`;
+    case 'Hotels':
+      return `https://www.hotels.com/search.do?destination=${q}${checkin?'&q-check-in='+checkin:''}${checkout?'&q-check-out='+checkout:''}&q-rooms=1&q-room-0-adults=${adults}`;
+    case 'Google':
+      return `https://www.google.com/travel/search?q=${q}${checkin?'&checkin='+checkin:''}${checkout?'&checkout='+checkout:''}`;
+    default:
+      return `https://www.google.com/search?q=${q}`;
+  }
+}
 function stayCardHTML(s, deletable){
+  const url = bookingSearchUrl(s);
   return `
     <div class="stay-card deletable" draggable="true" data-stay="${s.id}">
       ${deletable ? `<button class="del-x" data-delstay="${s.id}" title="Retirer cet hébergement">✕</button>` : ''}
@@ -2239,7 +2266,10 @@ function stayCardHTML(s, deletable){
         <div class="price">${s.price}€ <span>/ nuit</span></div>
         <div class="rating">★ ${s.rating}</div>
       </div>
-      <div style="margin-top:5px;"><span class="doc-dot ${s.real?'ok':''}" style="${s.real?'':'background:#eee;color:#8a8a8a;'}">${s.real?'Données réelles':'Démo'}</span></div>
+      <div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <span class="doc-dot ${s.real?'ok':''}" style="${s.real?'':'background:#eee;color:#8a8a8a;'}">${s.real?'Données réelles':'Démo'}</span>
+        <a href="${url}" target="_blank" rel="noopener" class="link-btn" style="font-size:11px;flex-shrink:0;" onclick="event.stopPropagation()">Voir avec ces dates →</a>
+      </div>
     </div>
   `;
 }
@@ -2291,9 +2321,10 @@ function renderItinerary(){
     const nights = g.days.length;
     const rangeLabel = nights>1 ? `${fmtDate(g.days[0].date)} → ${fmtDate(g.days[nights-1].date)}` : fmtDate(g.days[0].date);
     const withStay = g.days.filter(d=> (state.placements[d.id]||[]).length).length;
+    const dayIds = g.days.map(d=>d.id).join(',');
     return `
     <div class="day-group${expanded?' expanded':''}" data-groupkey="${groupKey}">
-      <div class="day-group-head" data-togglegroup="${groupKey}">
+      <div class="day-group-head" data-togglegroup="${groupKey}" data-groupdrop="${dayIds}">
         <div>
           <div class="dg-title">${g.destName}</div>
           <div class="dg-sub">${rangeLabel} · ${nights} jour${nights>1?'s':''} · ${withStay}/${nights} avec hébergement</div>
@@ -2302,7 +2333,7 @@ function renderItinerary(){
       </div>
       <div class="day-group-body">
         ${g.days.map(day => `
-          <div class="day-row">
+          <div class="day-row" data-daydrop="${day.id}">
             <div class="dr-date">${fmtDate(day.date)}</div>
             <div class="dr-stays">
               ${(state.placements[day.id]||[]).map(sid=>{
@@ -2339,6 +2370,28 @@ function renderItinerary(){
       autosave();
     });
   });
+
+  /* Glisser-déposer depuis le comparateur : sur l'en-tête d'une ville, l'hébergement
+     est assigné à TOUS les jours de cette étape (cas courant : un seul hôtel pour
+     tout le séjour) ; déplié, on peut aussi viser un jour précis. */
+  function wireDrop(el, dayIds){
+    el.addEventListener('dragover', e=>{ e.preventDefault(); el.classList.add('dragover'); });
+    el.addEventListener('dragleave', ()=> el.classList.remove('dragover'));
+    el.addEventListener('drop', e=>{
+      e.preventDefault();
+      el.classList.remove('dragover');
+      const stayId = e.dataTransfer.getData('text/plain');
+      if(!stayId) return;
+      let added = 0;
+      dayIds.forEach(dayId=>{
+        if(!state.placements[dayId]) state.placements[dayId] = [];
+        if(!state.placements[dayId].includes(stayId)){ state.placements[dayId].push(stayId); added++; }
+      });
+      if(added){ renderItinerary(); autosave(); showToast(`Hébergement assigné à ${added} jour${added>1?'s':''} ✓`); }
+    });
+  }
+  col.querySelectorAll('[data-groupdrop]').forEach(head=> wireDrop(head, head.dataset.groupdrop.split(',')));
+  col.querySelectorAll('[data-daydrop]').forEach(row=> wireDrop(row, [row.dataset.daydrop]));
 }
 
 /* Sélecteur d'hébergement pour un jour donné — remplace l'ancien glisser-déposer
@@ -2502,7 +2555,7 @@ document.getElementById('googleHotelsSearchBtn').addEventListener('click', async
     const data = await callProxy(`/api/google-hotels?query=${encodeURIComponent(dest.name)}&checkin=${dest.start}&checkout=${dest.end}`);
     const fresh = (data.results || []).map((h,i)=> ({
       id: dest.id+'-google-'+i+'-'+Date.now(),
-      destId: dest.id, name: h.name, source: 'Google', price: Math.round(parseFloat(h.price)||0), rating: h.rating, real: true,
+      destId: dest.id, name: h.name, source: 'Google', price: Math.round(parseFloat(h.price)||0), rating: h.rating, real: true, url: h.url || null,
     }));
     refreshGoogleHotelsQuota();
     if(!fresh.length){ showErrorModal('Aucun résultat Google', `Aucun hôtel Google trouvé pour ${dest.name}.`); return; }
