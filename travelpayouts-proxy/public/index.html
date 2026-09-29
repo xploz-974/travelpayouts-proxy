@@ -194,6 +194,7 @@ input,select,textarea{font-family:inherit;}
   background:var(--paper-raised);border:1px solid var(--line);border-radius:9px;padding:10px 12px;cursor:grab;box-shadow:var(--shadow);
 }
 .stay-card:active{cursor:grabbing;}
+.stay-photo{width:calc(100% + 24px);margin:-10px -12px 8px -12px;display:block;height:110px;object-fit:cover;border-radius:9px 9px 0 0;}
 .stay-card .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
 .stay-card .stay-name{font-weight:600;font-size:13px;}
 .stay-card .source{font-size:9.5px;font-weight:700;letter-spacing:.03em;padding:2px 6px;border-radius:5px;color:#fff;flex-shrink:0;}
@@ -2245,20 +2246,22 @@ function bookingSearchUrl(stay){
 }
 function stayCardHTML(s, deletable){
   const url = bookingSearchUrl(s);
+  const detailsLabel = (s.source==='Google' && s.url) ? 'Plus de détails →' : 'Voir avec ces dates →';
   return `
     <div class="stay-card deletable" draggable="true" data-stay="${s.id}">
       ${deletable ? `<button class="del-x" data-delstay="${s.id}" title="Retirer cet hébergement">✕</button>` : ''}
+      ${s.image ? `<img src="${s.image}" alt="" class="stay-photo" draggable="false">` : ''}
       <div class="row1">
         <div class="stay-name">${s.name}</div>
         <div class="source src-${s.source}">${s.source}</div>
       </div>
       <div class="row2">
         <div class="price">${s.price}€ <span>/ nuit</span></div>
-        <div class="rating">★ ${s.rating}</div>
+        <div class="rating">★ ${s.rating}${s.reviews ? ` <span style="font-weight:400;color:var(--ink-soft);">(${s.reviews})</span>` : ''}</div>
       </div>
       <div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
         <span class="doc-dot ${s.real?'ok':''}" style="${s.real?'':'background:#eee;color:#8a8a8a;'}">${s.real?'Données réelles':'Démo'}</span>
-        <a href="${url}" target="_blank" rel="noopener" class="link-btn" style="font-size:11px;flex-shrink:0;" onclick="event.stopPropagation()">Voir avec ces dates →</a>
+        <a href="${url}" target="_blank" rel="noopener" class="link-btn" style="font-size:11px;flex-shrink:0;" onclick="event.stopPropagation()">${detailsLabel}</a>
       </div>
     </div>
   `;
@@ -2283,11 +2286,13 @@ function deleteStay(id){
 
 /* ---------------- itinerary pool + days ---------------- */
 /* Groupe les jours par destination (pas par carte individuelle) : sur un voyage
-   long, une carte par jour occupe une page entière. On replie donc les jours
-   consécutifs d'une même destination sous un seul en-tête cliquable, avec la
-   plage de dates et le nombre d'hébergements déjà assignés en résumé. L'état
-   ouvert/replié est volatile (pas sauvegardé) — chaque étape se souvient juste
-   de son état pendant la session en cours. */
+   long, une carte par jour occupe une page entière. Les jours consécutifs d'une
+   même destination sont donc rassemblés sous un en-tête cliquable (repliable),
+   avec la plage de dates et le nombre d'hébergements déjà assignés en résumé.
+   Ouvert par défaut — vit dans l'onglet Hébergements à côté du comparateur,
+   pour glisser un hôtel directement sur le bon jour sans étape de dépliage en
+   plus. L'état ouvert/replié est volatile (pas sauvegardé) — chaque étape se
+   souvient juste de son état pendant la session en cours. */
 const dayGroupExpanded = {};
 function groupDaysByDestination(){
   const sorted = [...state.days].sort((a,b)=> a.date.localeCompare(b.date));
@@ -2306,7 +2311,7 @@ function renderItinerary(){
 
   col.innerHTML = groups.map((g,gi)=>{
     const groupKey = g.destId+'|'+g.days[0].date;
-    if(!(groupKey in dayGroupExpanded)) dayGroupExpanded[groupKey] = groups.length===1;
+    if(!(groupKey in dayGroupExpanded)) dayGroupExpanded[groupKey] = true;
     const expanded = dayGroupExpanded[groupKey];
     const nights = g.days.length;
     const rangeLabel = nights>1 ? `${fmtDate(g.days[0].date)} → ${fmtDate(g.days[nights-1].date)}` : fmtDate(g.days[0].date);
@@ -2546,6 +2551,7 @@ document.getElementById('googleHotelsSearchBtn').addEventListener('click', async
     const fresh = (data.results || []).map((h,i)=> ({
       id: dest.id+'-google-'+i+'-'+Date.now(),
       destId: dest.id, name: h.name, source: 'Google', price: Math.round(parseFloat(h.price)||0), rating: h.rating, real: true, url: h.url || null,
+      reviews: h.reviews || null, image: h.image || null,
     }));
     refreshGoogleHotelsQuota();
     if(!fresh.length){ showErrorModal('Aucun résultat Google', `Aucun hôtel Google trouvé pour ${dest.name}.`); return; }
