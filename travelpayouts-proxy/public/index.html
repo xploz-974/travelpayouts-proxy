@@ -706,6 +706,10 @@ input,select,textarea{font-family:inherit;}
           <div class="dc-head"><h3>🚕 Applis de transport local, par région</h3></div>
           <div class="dash-list" id="transportAppsList"></div>
         </div>
+        <div class="dash-card dash-wide" style="margin-bottom:16px;">
+          <div class="dc-head"><h3>📶 Connexion internet (SIM / eSIM) à l'étranger</h3></div>
+          <div class="dash-list" id="simTipsList"></div>
+        </div>
         <div id="countryAdviceWrap"></div>
       </div>
 
@@ -5543,6 +5547,19 @@ function renderTransportApps(){
     `<p class="forecast-note" style="margin-top:8px;">Indicatif et général — la disponibilité réelle dépend de la ville précise, vérifie sur place ou juste avant de partir.</p>`;
 }
 
+function renderSimTips(){
+  const el = document.getElementById('simTipsList');
+  if(!el) return;
+  const tips = [
+    '📲 Vérifie si ton téléphone gère l\'eSIM avant de partir : Réglages → À propos du téléphone (ou "Réseau et Internet"), cherche "Ajouter un eSIM" — ou compose *#06# et regarde si un numéro EID s\'affiche en plus de l\'IMEI.',
+    '🇹🇭 Thaïlande — le moins cher et le plus simple : SIM touriste AIS 2Fly ou TrueMove H Tourist SIM, à l\'aéroport ou dans n\'importe quel 7-Eleven, ~299-399 THB pour 15-30 jours de data. Encore moins cher : une SIM prépayée "normale" (pas la version touriste) + un forfait data ajouté sur place, ~150-250 THB pour 15 jours — passeport obligatoire pour l\'enregistrement.',
+    '📶 Format de carte : demande une nano-SIM (standard sur les téléphones récents) — les vendeurs ont toujours l\'outil pour découper/ajuster la taille sur place.',
+    '🌍 Ailleurs dans le monde : une eSIM (Airalo, Holafly, Saily...) est pratique et s\'active avant même d\'atterrir, mais coûte souvent plus cher au Go qu\'une SIM physique locale achetée sur place.',
+    '💾 Pense à noter/exporter tes contacts et 2FA importants avant de changer de carte SIM — certains services renvoient un code de confirmation sur l\'ancien numéro.',
+  ];
+  el.innerHTML = tips.map(t=>`<div class="dash-row" style="align-items:flex-start;"><span>${t}</span></div>`).join('');
+}
+
 async function fetchCountryAdvice(dest){
   const context = `${dest.name}, ${dest.country}`;
   const prompt = `Un voyageur français part à ${context}. Cherche sur internet des informations à jour et réponds UNIQUEMENT avec un objet JSON valide (pas de texte autour, pas de markdown), avec des puces courtes (8 mots maximum chacune, un emoji au début de chaque puce, 3 à 5 puces par catégorie, ton léger et concret, pas de phrases longues) :
@@ -5671,6 +5688,7 @@ function renderAll(){
   const found = await loadAutosave();
   renderMoneyTips();
   renderTransportApps();
+  renderSimTips();
   if(state.settings.adminUnlocked) document.getElementById('adminNavItem').style.display = '';
   renderAll();
   refreshGoogleHotelsQuota();
