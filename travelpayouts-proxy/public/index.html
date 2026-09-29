@@ -163,20 +163,28 @@ input,select,textarea{font-family:inherit;}
 .dest-card .transport{font-size:11.5px;color:var(--teal-dark);margin-top:6px;display:flex;align-items:center;gap:5px;}
 
 .itinerary-grid{display:grid;grid-template-columns:1fr 300px;gap:22px;margin-top:20px;align-items:start;}
+.itinerary-grid-solo{grid-template-columns:1fr;}
 .days{display:flex;flex-direction:column;gap:12px;}
-.day-card{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
-.day-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f6f3ec;border-bottom:1px solid var(--line);}
-.day-head .d{font-weight:600;font-size:13.5px;}
-.day-head .loc{font-size:11.5px;color:var(--ink-soft);}
-.dropzone{min-height:56px;padding:10px 14px;display:flex;flex-direction:column;gap:8px;transition:background .15s;}
-.dropzone.dragover{background:var(--amber-soft);}
-.dropzone .empty-hint{font-size:12px;color:#9aa6a1;font-style:italic;padding:6px 2px;}
-.placed-item{
-  display:flex;justify-content:space-between;align-items:center;gap:8px;background:#f0ede4;border:1px solid var(--line);
-  border-radius:7px;padding:7px 10px;font-size:12.6px;
-}
-.placed-item .src-tag{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--teal);color:#fff;font-weight:600;}
-.placed-item .remove{background:none;border:none;color:#a04b3f;font-size:15px;line-height:1;padding:0 2px;}
+.day-add-stay{align-self:flex-start;background:none;border:1px dashed var(--teal-dark);color:var(--teal-dark);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;}
+.day-add-stay:hover{background:var(--amber-soft);}
+/* Groupe compact : les jours consécutifs d'une même destination sont repliés sous un
+   seul en-tête (sinon un voyage de 3 semaines affiche 20+ cartes pleine largeur). */
+.day-group{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+.day-group-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;background:#f6f3ec;cursor:pointer;user-select:none;}
+.day-group-head:hover{background:#efeadf;}
+.day-group-head .dg-title{font-weight:600;font-size:13.5px;}
+.day-group-head .dg-sub{font-size:11.5px;color:var(--ink-soft);margin-top:1px;}
+.day-group-head .dg-arrow{transition:transform .15s;font-size:12px;color:var(--ink-soft);flex-shrink:0;}
+.day-group.expanded .dg-arrow{transform:rotate(90deg);}
+.day-group-body{display:none;border-top:1px solid var(--line);}
+.day-group.expanded .day-group-body{display:block;}
+.day-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.day-row:last-child{border-bottom:none;}
+.day-row .dr-date{font-size:12px;font-weight:600;flex-shrink:0;min-width:78px;}
+.day-row .dr-stays{flex:1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:180px;}
+.day-row .dr-chip{display:flex;align-items:center;gap:5px;background:#f0ede4;border:1px solid var(--line);border-radius:7px;padding:4px 8px;font-size:11.6px;}
+.day-row .dr-chip .remove{background:none;border:none;color:#a04b3f;font-size:13px;line-height:1;padding:0 1px;cursor:pointer;}
+.day-row .dr-empty{font-size:11.6px;color:#9aa6a1;font-style:italic;}
 
 .stay-pool{position:sticky;top:0;}
 .stay-pool h3{font-size:14px;margin-bottom:4px;}
@@ -449,13 +457,8 @@ input,select,textarea{font-family:inherit;}
 
         <div id="legsWrap" style="margin-top:18px;"></div>
 
-        <div class="itinerary-grid">
+        <div class="itinerary-grid itinerary-grid-solo">
           <div class="days" id="daysCol"></div>
-          <div class="stay-pool">
-            <h3>Hébergements proposés</h3>
-            <p class="hint">Résultats agrégés Booking · Airbnb · Agoda · Hotels.com · Google Hotels</p>
-            <div class="stay-list" id="poolListItinerary"></div>
-          </div>
         </div>
       </div>
 
@@ -473,6 +476,14 @@ input,select,textarea{font-family:inherit;}
           <div class="dc-head"><h3>Rechercher un prix réel, étape par étape</h3></div>
           <p class="forecast-note" style="margin-bottom:10px;">Interroge directement Travelpayouts / Duffel pour chaque étape avion de ton itinéraire.</p>
           <div id="ticketRealPrices" class="dash-list"></div>
+          <p class="forecast-note" style="margin-top:10px;">💡 Ajoute aussi ton billet retour (trajet se terminant par "(retour)") avec sa date exacte ci-dessous — l'onglet Itinéraire prolongera alors automatiquement le séjour sur ta dernière étape jusqu'à ce jour-là.</p>
+        </div>
+
+        <div class="dash-card dash-wide" style="margin-bottom:16px;">
+          <div class="dc-head"><h3>Recherche de vols — partenaire</h3></div>
+          <p class="forecast-note" style="margin-bottom:10px;">Boutons générés automatiquement d'après ton aéroport de départ et les destinations déjà planifiées dans l'itinéraire (avec leur code aéroport renseigné). Le trajet et les dates pré-remplis restent modifiables directement dans le moteur de recherche ci-dessous si tu veux comparer un autre vol.</p>
+          <div id="flightWidgetButtons" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+          <div id="flightWidgetWrap" style="min-height:60px;"></div>
         </div>
 
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
@@ -596,7 +607,7 @@ input,select,textarea{font-family:inherit;}
         <div class="dash-list" id="packingList" style="max-width:720px;"></div>
 
         <div class="section-head" style="margin-top:26px;">
-          <div><h2 style="font-size:16px;">Poser une question à l'IA</h2><p>Nécessite d'ouvrir ce prototype directement dans Claude — ne fonctionnera pas si tu ouvres le fichier téléchargé dans un navigateur classique.</p></div>
+          <div><h2 style="font-size:16px;">Poser une question à l'IA</h2><p>Pose n'importe quelle question sur ton voyage — l'assistant peut vérifier sur internet si besoin (prix, météo, actualité...).</p></div>
         </div>
         <div style="max-width:720px;">
           <textarea id="ai-question" placeholder="Ex. Que dois-je vérifier avant de partir avec des enfants en bas âge ?" style="width:100%;min-height:70px;padding:10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;"></textarea>
@@ -681,6 +692,14 @@ input,select,textarea{font-family:inherit;}
             <p>Par destination et par thème — vêtements, matériel, parcs d'attraction, restaurants, change, ou tout autre besoin. Chacun ajoute ses idées, toute la famille les voit ; les liens ouvrent Maps/Google/TripAdvisor pour comparer sur place.</p>
           </div>
         </div>
+        <div class="dash-card dash-wide" style="margin-bottom:16px;">
+          <div class="dc-head"><h3>Activités populaires — recherche partenaire</h3></div>
+          <div style="min-height:60px;"><script async src="https://tpscr.com/content?currency=EUR&trs=573095&shmarker=776652&locale=fr&city_id=4&category=1&amount=3&powered_by=true&campaign_id=137&promo_id=4497" charset="utf-8"></script></div>
+        </div>
+        <div class="dash-card dash-wide" style="margin-bottom:16px;">
+          <div class="dc-head"><h3>Bons plans Thaïlande — recherche partenaire</h3></div>
+          <div style="min-height:60px;"><script async src="https://tpscr.com/content?trs=573095&shmarker=776652&locale=en&country=Thailand&powered_by=true&color_button=%23f2685f&color_focused=%23f2685f&secondary=%23FFFFFF&dark=%2311100f&light=%23FFFFFF&special=%23C4C4C4&border_radius=5&plain=false&no_labels=true&promo_id=8588&campaign_id=541" charset="utf-8"></script></div>
+        </div>
         <div id="activitiesWrap"></div>
       </div>
 
@@ -689,7 +708,7 @@ input,select,textarea{font-family:inherit;}
         <div class="section-head">
           <div>
             <h2>Conseils &amp; juridique</h2>
-            <p>Par destination — vaccins, pharmacie, lois locales, argent, bons plans. Généré par IA + recherche web (Claude), vérifié nulle part ailleurs que sur internet au moment de la génération.</p>
+            <p>Par destination — vaccins, pharmacie, lois locales, argent, bons plans. Généré par IA + recherche web, vérifié nulle part ailleurs que sur internet au moment de la génération.</p>
           </div>
         </div>
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
@@ -2243,61 +2262,119 @@ function deleteStay(id){
 }
 
 /* ---------------- itinerary pool + days ---------------- */
+/* Groupe les jours par destination (pas par carte individuelle) : sur un voyage
+   long, une carte par jour occupe une page entière. On replie donc les jours
+   consécutifs d'une même destination sous un seul en-tête cliquable, avec la
+   plage de dates et le nombre d'hébergements déjà assignés en résumé. L'état
+   ouvert/replié est volatile (pas sauvegardé) — chaque étape se souvient juste
+   de son état pendant la session en cours. */
+const dayGroupExpanded = {};
+function groupDaysByDestination(){
+  const sorted = [...state.days].sort((a,b)=> a.date.localeCompare(b.date));
+  const groups = [];
+  sorted.forEach(day=>{
+    const last = groups[groups.length-1];
+    if(last && last.destId===day.destId) last.days.push(day);
+    else groups.push({ destId: day.destId, destName: day.destName, days: [day] });
+  });
+  return groups;
+}
 function renderItinerary(){
-  const pool = document.getElementById('poolListItinerary');
-  const visibleStays = state.settings.realDataOnly ? state.stays.filter(s=>s.real) : state.stays;
-  pool.innerHTML = visibleStays.map(s=>stayCardHTML(s,true)).join('') || (state.settings.realDataOnly
-    ? '<p class="dash-empty">Aucun prix réel pour l\'instant. Va dans l\'onglet Hébergements et clique sur "🔄 Hôtels Duffel", "🔄 Hôtels Booking.com", ou ajoute un hébergement manuellement.</p>'
-    : '<p class="dash-empty">Aucun hébergement dans le comparateur.</p>');
-  attachDrag(pool);
-  pool.querySelectorAll('[data-delstay]').forEach(btn=> btn.addEventListener('click', e=>{ e.stopPropagation(); deleteStay(btn.dataset.delstay); }));
-
   const col = document.getElementById('daysCol');
-  const hasAnyStay = state.stays.length > 0;
-  col.innerHTML = state.days.map(day => `
-    <div class="day-card">
-      <div class="day-head">
-        <div class="d">${fmtDate(day.date)}</div>
-        <div class="loc">${day.destName}</div>
+  const groups = groupDaysByDestination();
+  if(!groups.length){ col.innerHTML = '<p class="dash-empty">Ajoutez une destination pour voir apparaître les jours de votre voyage.</p>'; return; }
+
+  col.innerHTML = groups.map((g,gi)=>{
+    const groupKey = g.destId+'|'+g.days[0].date;
+    if(!(groupKey in dayGroupExpanded)) dayGroupExpanded[groupKey] = groups.length===1;
+    const expanded = dayGroupExpanded[groupKey];
+    const nights = g.days.length;
+    const rangeLabel = nights>1 ? `${fmtDate(g.days[0].date)} → ${fmtDate(g.days[nights-1].date)}` : fmtDate(g.days[0].date);
+    const withStay = g.days.filter(d=> (state.placements[d.id]||[]).length).length;
+    return `
+    <div class="day-group${expanded?' expanded':''}" data-groupkey="${groupKey}">
+      <div class="day-group-head" data-togglegroup="${groupKey}">
+        <div>
+          <div class="dg-title">${g.destName}</div>
+          <div class="dg-sub">${rangeLabel} · ${nights} jour${nights>1?'s':''} · ${withStay}/${nights} avec hébergement</div>
+        </div>
+        <span class="dg-arrow">▶</span>
       </div>
-      <div class="dropzone" data-day="${day.id}">
-        ${(state.placements[day.id]||[]).map(sid=>{
-          const s = state.stays.find(x=>x.id===sid);
-          if(!s) return '';
-          return `<div class="placed-item"><span>${s.name} · <span class="src-tag">${s.source}</span> · ${s.price}€</span><button class="remove" data-remove="${day.id}|${sid}">✕</button></div>`;
-        }).join('') || (hasAnyStay
-          ? '<div class="empty-hint">Glissez un hébergement du comparateur ci-contre</div>'
-          : `<div class="empty-hint">Aucun hébergement enregistré pour l'instant. <button class="link-btn" data-quickaddstay="${day.destId||''}">+ En ajouter un</button></div>`)}
+      <div class="day-group-body">
+        ${g.days.map(day => `
+          <div class="day-row">
+            <div class="dr-date">${fmtDate(day.date)}</div>
+            <div class="dr-stays">
+              ${(state.placements[day.id]||[]).map(sid=>{
+                const s = state.stays.find(x=>x.id===sid);
+                if(!s) return '';
+                return `<span class="dr-chip">${s.name} · ${s.price}€ <button class="remove" data-remove="${day.id}|${sid}" title="Retirer">✕</button></span>`;
+              }).join('') || `<span class="dr-empty">Aucun hébergement assigné.</span>`}
+            </div>
+            <button class="day-add-stay" data-adddaystay="${day.id}">+ Ajouter</button>
+          </div>
+        `).join('')}
       </div>
     </div>
-  `).join('') || '<p class="dash-empty">Ajoutez une destination pour voir apparaître les jours de votre voyage.</p>';
+  `;
+  }).join('');
 
-  col.querySelectorAll('[data-quickaddstay]').forEach(btn=> btn.addEventListener('click', ()=>{
-    document.getElementById('addStayBtn')?.click();
+  col.querySelectorAll('[data-togglegroup]').forEach(head=> head.addEventListener('click', ()=>{
+    const key = head.dataset.togglegroup;
+    dayGroupExpanded[key] = !dayGroupExpanded[key];
+    renderItinerary();
   }));
 
-  col.querySelectorAll('.dropzone').forEach(zone=>{
-    zone.addEventListener('dragover', e=>{ e.preventDefault(); zone.classList.add('dragover'); });
-    zone.addEventListener('dragleave', ()=> zone.classList.remove('dragover'));
-    zone.addEventListener('drop', e=>{
-      e.preventDefault();
-      zone.classList.remove('dragover');
-      const stayId = e.dataTransfer.getData('text/plain');
-      const dayId = zone.dataset.day;
-      if(!state.placements[dayId].includes(stayId)) state.placements[dayId].push(stayId);
-      renderItinerary();
-      autosave();
-    });
-  });
+  col.querySelectorAll('[data-adddaystay]').forEach(btn=> btn.addEventListener('click', e=>{
+    e.stopPropagation();
+    openDayStayPickerModal(btn.dataset.adddaystay);
+  }));
 
   col.querySelectorAll('[data-remove]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
       const [dayId, stayId] = btn.dataset.remove.split('|');
       state.placements[dayId] = state.placements[dayId].filter(x=>x!==stayId);
       renderItinerary();
       autosave();
     });
   });
+}
+
+/* Sélecteur d'hébergement pour un jour donné — remplace l'ancien glisser-déposer
+   depuis une liste dupliquée dans l'onglet Itinéraire : le comparateur complet
+   ne vit désormais que dans l'onglet Hébergements. */
+function openDayStayPickerModal(dayId){
+  const day = state.days.find(d=>d.id===dayId);
+  if(!day) return;
+  const visibleStays = state.settings.realDataOnly ? state.stays.filter(s=>s.real) : state.stays;
+  const already = state.placements[dayId] || [];
+  const options = visibleStays.filter(s=> !already.includes(s.id));
+  const sameDest = options.filter(s=> s.destId===day.destId);
+  const others = options.filter(s=> s.destId!==day.destId);
+  const ordered = [...sameDest, ...others];
+  document.getElementById('modalBody').innerHTML = `
+    <h3>Ajouter un hébergement — ${fmtDate(day.date)} (${day.destName})</h3>
+    ${ordered.length ? `<div class="stay-list" style="max-height:400px;">${ordered.map(s=>`
+      <div class="stay-card" data-pickstay="${s.id}" style="cursor:pointer;">
+        <div class="row1"><div class="stay-name">${s.name}</div><div class="source src-${s.source}">${s.source}</div></div>
+        <div class="row2"><div class="price">${s.price}€ <span>/ nuit</span></div><div class="rating">★ ${s.rating}</div></div>
+      </div>
+    `).join('')}</div>` : `<p class="dash-empty">Aucun hébergement dans le comparateur pour l'instant. Va dans l'onglet Hébergements pour en chercher ou en ajouter un.</p>`}
+    <div class="modal-actions">
+      <button class="btn ghost small" id="modalClose">Fermer</button>
+    </div>
+  `;
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.querySelectorAll('[data-pickstay]').forEach(card=> card.addEventListener('click', ()=>{
+    const sid = card.dataset.pickstay;
+    if(!state.placements[dayId].includes(sid)) state.placements[dayId].push(sid);
+    closeModal();
+    renderItinerary();
+    autosave();
+    showToast('Hébergement ajouté ✓');
+  }));
 }
 
 /* ---------------- full comparateur ---------------- */
@@ -2616,35 +2693,19 @@ function readFileAsDataUrl(file){
 }
 
 /* ============================ LECTURE AUTOMATIQUE DE PIÈCE D'IDENTITÉ (IA) ============================
-   Utilise Claude (déjà accessible depuis cet artefact, sans clé à saisir) en vision
-   pour lire une photo de passeport / carte d'identité et en extraire les champs utiles.
-   Ne fonctionne que lorsque ce prototype est ouvert directement dans Claude — en dehors,
-   l'appel échoue proprement et l'utilisateur peut toujours remplir les champs à la main.
-   Important : Claude ne devine jamais un champ illisible, il le laisse vide plutôt que
-   d'inventer une donnée officielle (numéro de document, date...).
+   Passe par le serveur relais (/api/ai/vision, voir src/routes/ai.js) qui appelle Gemini
+   avec la clé côté serveur — le navigateur ne voit jamais la clé. Lit une photo de
+   passeport / carte d'identité et en extrait les champs utiles. Important : l'IA ne
+   devine jamais un champ illisible, elle le laisse vide plutôt que d'inventer une
+   donnée officielle (numéro de document, date...).
 =========================================================================================================== */
 async function extractIdentityFromImage(dataUrl, mimeType){
   const base64 = dataUrl.split(',')[1];
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 500,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-          { type: 'text', text: `Cette image est une pièce d'identité ou un passeport. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour ni balises markdown, au format exact :
+  const prompt = `Cette image est une pièce d'identité ou un passeport. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour ni balises markdown, au format exact :
 {"prenom":"","deuxiemePrenom":"","nom":"","dateNaissance":"AAAA-MM-JJ ou vide","typeDocument":"Passeport ou Carte d'identité","numeroDocument":"","dateExpiration":"AAAA-MM-JJ ou vide","nationalite":""}
-Si un champ est illisible, flou ou absent, laisse la valeur vide — ne devine jamais.` },
-        ],
-      }],
-    }),
-  });
-  const data = await response.json();
-  const text = (data.content||[]).map(c=>c.text||'').join('').trim();
-  const cleaned = text.replace(/```json|```/g,'').trim();
+Si un champ est illisible, flou ou absent, laisse la valeur vide — ne devine jamais.`;
+  const data = await callProxyPost('/api/ai/vision', { imageBase64: base64, mimeType, prompt });
+  const cleaned = (data.text||'').replace(/```json|```/g,'').trim();
   return JSON.parse(cleaned);
 }
 
@@ -2752,7 +2813,7 @@ function openTravelerModal(id){
     }catch(err){
       console.error(err);
       btn.textContent = originalLabel; btn.disabled = false;
-      showToast("Extraction impossible (fonctionne uniquement dans Claude, avec une image lisible).");
+      showToast(err.message || "Extraction impossible — vérifie le serveur relais (⚙ Paramètres) et l'image, ou remplis les champs manuellement.");
     }
   }));
 }
@@ -2848,7 +2909,7 @@ function openAddTravelerModal(groupId, existingTraveler){
       statusEl.innerHTML = `Informations détectées ✓ — vérifie-les avant de valider${info.numeroDocument ? ' (n° document : <b>'+info.numeroDocument+'</b>)' : ' (numéro non détecté, à ajouter à la main si besoin)'}.`;
     }catch(err){
       console.error(err);
-      statusEl.textContent = "Lecture automatique impossible (fonctionne uniquement dans Claude, avec une image nette). Remplis les champs manuellement.";
+      statusEl.textContent = (err.message || "Lecture automatique impossible.") + " Remplis les champs manuellement.";
     }
   });
 
@@ -3683,6 +3744,26 @@ function getTripHub(){
 function getLastLeg(){
   if(!state.destinations.length) return null;
   return [...state.destinations].sort((a,b)=> a.end.localeCompare(b.end))[state.destinations.length-1];
+}
+
+/* Le billet retour (route se terminant par "(retour)", voir buildTripLegs) porte
+   la seule vraie date de fin de séjour connue : le jour où l'avion décolle depuis
+   le hub vers l'origine. Tant que rien n'est saisi, l'app ne peut pas deviner cette
+   date — mais dès qu'un billet retour est enregistré, la dernière étape (le hub)
+   doit couvrir tout le séjour jusqu'à ce jour-là, sans que l'utilisateur ait à
+   éditer les dates à la main. */
+function getReturnTicket(){
+  return state.flightTickets.find(tk=> tk.route && tk.route.trim().endsWith('(retour)') && tk.date);
+}
+function syncHubEndWithReturnTicket(){
+  const ticket = getReturnTicket();
+  if(!ticket) return;
+  const lastLeg = getLastLeg();
+  if(!lastLeg) return;
+  const wantedEnd = new Date(new Date(ticket.date).getTime() + 86400000).toISOString().slice(0,10);
+  if(wantedEnd > lastLeg.end){
+    shiftDestinationDates(lastLeg, lastLeg.start, wantedEnd);
+  }
 }
 
 /* Résumé pour la carte "Destinations" du tableau de bord : indique le trajet aller-retour
@@ -4807,6 +4888,7 @@ function renderTicketRealPrices(){
 
 function renderTickets(){
   renderTicketRealPrices();
+  renderFlightWidgetButtons();
   const list = document.getElementById('ticketsList');
   const linksWrap = document.getElementById('ticketQuoteLinks');
   if(!list || !linksWrap) return;
@@ -4845,6 +4927,68 @@ function renderTickets(){
     const tk = state.flightTickets.find(t=>t.id===b.dataset.editticket);
     if(tk) openAddTicketModal(tk);
   }));
+}
+
+/* ============================ WIDGET DE RECHERCHE DE VOLS (partenaire) ============================
+   Le widget tpscr.com lit ses paramètres (default_origin/default_destination) une seule fois,
+   au chargement du <script>. Pour proposer une recherche pertinente sans que l'utilisateur ait à
+   ressaisir ses codes aéroport, on construit une liste de trajets à partir de l'itinéraire déjà
+   renseigné (aéroport de départ + destinations du QCM/de l'itinéraire), puis on ré-injecte un
+   nouveau <script> avec les bons paramètres quand l'utilisateur clique sur un bouton de trajet.
+================================================================================================== */
+function flightWidgetLegs(){
+  const dests = [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start));
+  const origin = state.settings.originIata;
+  const legs = [];
+  const hub = getTripHub();
+  const lastLeg = getLastLeg();
+  if(origin && hub && hub.iata){
+    const ticket = getReturnTicket();
+    const returnDate = ticket ? ticket.date : (lastLeg ? lastLeg.end : null);
+    legs.push({
+      label: `Aller-retour ${origin} → ${hub.iata} (${hub.name}) · ${fmtDate(hub.start)}${returnDate?' → '+fmtDate(returnDate):''}`,
+      from: origin, to: hub.iata, departure: hub.start, ret: returnDate,
+    });
+  }
+  for(let i=1;i<dests.length;i++){
+    const prev = dests[i-1], d = dests[i];
+    if((d.transportModes||[]).includes('Avion') && prev.iata && d.iata){
+      legs.push({ label: `${prev.name} (${prev.iata}) → ${d.name} (${d.iata}) · ${fmtDate(d.start)}`, from: prev.iata, to: d.iata, departure: d.start, ret: null });
+    }
+  }
+  return legs;
+}
+function loadFlightWidget(leg){
+  const wrap = document.getElementById('flightWidgetWrap');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  const params = new URLSearchParams({
+    currency: 'eur', trs: '573095', shmarker: '776652',
+    default_origin: leg.from, default_destination: leg.to,
+    locale: 'fr', stops: 'any', show_hotels: 'true', powered_by: 'true',
+    border_radius: '0', plain: 'true', color_button: '#00A991', color_button_text: '#ffffff',
+    campaign_id: '111', promo_id: '3414',
+  });
+  const s = document.createElement('script');
+  s.async = true;
+  s.charset = 'utf-8';
+  s.src = 'https://tpscr.com/content?' + params.toString();
+  wrap.appendChild(s);
+}
+function renderFlightWidgetButtons(){
+  const box = document.getElementById('flightWidgetButtons');
+  if(!box) return;
+  const legs = flightWidgetLegs();
+  if(!legs.length){
+    box.innerHTML = '<p class="forecast-note">Renseigne ton aéroport de départ (⚙ Paramètres) et au moins une destination en avion pour voir apparaître des recherches automatiques.</p>';
+    return;
+  }
+  box.innerHTML = legs.map((l,i)=> `<button class="btn ghost small" data-loadwidget="${i}">${l.label}</button>`).join('');
+  box.querySelectorAll('[data-loadwidget]').forEach(btn=> btn.addEventListener('click', ()=> loadFlightWidget(legs[+btn.dataset.loadwidget])));
+  if(!box.dataset.loaded){
+    loadFlightWidget(legs[0]);
+    box.dataset.loaded = '1';
+  }
 }
 
 function buildTripLegs(){
@@ -5093,26 +5237,11 @@ document.getElementById('bud-currency').addEventListener('change', async e=>{
    tout retaper à la main. */
 async function extractReceiptFromImage(dataUrl, mimeType){
   const base64 = dataUrl.split(',')[1];
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 300,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-          { type: 'text', text: `Ceci est une photo de reçu ou de facture. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
+  const prompt = `Ceci est une photo de reçu ou de facture. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
 {"label":"","amountEUR":0,"originalAmount":0,"originalCurrency":""}
-"label" : ce que c'est en quelques mots (ex. "Dîner restaurant", "Taxi aéroport"). "amountEUR" : le montant total converti en euros si la devise n'est pas l'euro (estimation raisonnable si besoin), sinon le montant tel quel. "originalAmount"/"originalCurrency" : le montant et la devise tels qu'affichés sur le reçu. Si illisible, mets des valeurs vides/à 0.` },
-        ],
-      }],
-    }),
-  });
-  const data = await response.json();
-  const text = (data.content||[]).map(c=>c.text||'').join('').trim();
-  return JSON.parse(text.replace(/```json|```/g,'').trim());
+"label" : ce que c'est en quelques mots (ex. "Dîner restaurant", "Taxi aéroport"). "amountEUR" : le montant total converti en euros si la devise n'est pas l'euro (estimation raisonnable si besoin), sinon le montant tel quel. "originalAmount"/"originalCurrency" : le montant et la devise tels qu'affichés sur le reçu. Si illisible, mets des valeurs vides/à 0.`;
+  const data = await callProxyPost('/api/ai/vision', { imageBase64: base64, mimeType, prompt });
+  return JSON.parse((data.text||'').replace(/```json|```/g,'').trim());
 }
 
 document.getElementById('bud-scan-receipt').addEventListener('change', async e=>{
@@ -5131,7 +5260,7 @@ document.getElementById('bud-scan-receipt').addEventListener('change', async e=>
     }, 50);
   }catch(err){
     console.error(err);
-    showToast('Lecture automatique impossible (fonctionne uniquement dans Claude, avec une image lisible). Remplis le frais manuellement.');
+    showToast((err.message || 'Lecture automatique impossible.') + ' Remplis le frais manuellement.');
     document.getElementById('bud-add-item-btn').click();
   }
 });
@@ -5357,7 +5486,7 @@ function renderActivities(){
 /* ============================ CONSEILS & JURIDIQUE ============================
    Astuces argent / applis transport : générales, stables, valables pour tout le
    monde — ne dépendent pas d'internet. Conseils par destination (vaccins, lois,
-   bons plans) : générés à la demande par Claude + recherche web, mis en cache
+   bons plans) : générés à la demande par l'assistant IA + recherche web, mis en cache
    dans le dossier avec une date, à considérer comme un point de départ, pas une
    source officielle — les liens officiels sont toujours affichés à côté.
 =================================================================================== */
@@ -5395,15 +5524,7 @@ function renderTransportApps(){
 
 async function fetchCountryAdvice(dest){
   const context = `${dest.name}, ${dest.country}`;
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1200,
-      messages: [{
-        role: 'user',
-        content: `Un voyageur français part à ${context}. Cherche sur internet des informations à jour et réponds UNIQUEMENT avec un objet JSON valide (pas de texte autour, pas de markdown), avec des puces courtes (8 mots maximum chacune, un emoji au début de chaque puce, 3 à 5 puces par catégorie, ton léger et concret, pas de phrases longues) :
+  const prompt = `Un voyageur français part à ${context}. Cherche sur internet des informations à jour et réponds UNIQUEMENT avec un objet JSON valide (pas de texte autour, pas de markdown), avec des puces courtes (8 mots maximum chacune, un emoji au début de chaque puce, 3 à 5 puces par catégorie, ton léger et concret, pas de phrases longues) :
 {"vaccins":[],"pharmacie":[],"lois":[],"mangerPasCher":[],"dormirPasCher":[],"transportLocal":[]}
 - vaccins : vaccins recommandés ou obligatoires pour un séjour touristique standard
 - pharmacie : médicaments/trousse utiles pour un trajet long (adultes et enfants)
@@ -5411,14 +5532,9 @@ async function fetchCountryAdvice(dest){
 - mangerPasCher : options et lieux typiques pour manger économique sur place
 - dormirPasCher : options d'hébergement économique typiques de cette destination
 - transportLocal : comment se déplacer localement pas cher (dont apps si utiles)
-Si une info est incertaine, dis-le brièvement plutôt que d'inventer.`,
-      }],
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-    }),
-  });
-  const data = await response.json();
-  const text = (data.content||[]).map(c=>c.text||'').filter(Boolean).join('').trim();
-  const cleaned = text.replace(/```json|```/g,'').trim();
+Si une info est incertaine, dis-le brièvement plutôt que d'inventer.`;
+  const data = await callProxyPost('/api/ai/ask', { prompt, useSearch: true });
+  const cleaned = (data.text||'').replace(/```json|```/g,'').trim();
   return JSON.parse(cleaned);
 }
 
@@ -5479,8 +5595,8 @@ function renderCountryAdvice(){
     }catch(err){
       console.error(err);
       btn.textContent = originalLabel; btn.disabled = false;
-      if(contentEl) contentEl.innerHTML = '<p class="dash-empty">Génération impossible (fonctionne uniquement dans Claude, avec connexion). Réessaie, ou consulte les liens officiels ci-dessous.</p>';
-      showToast('Impossible de générer les conseils pour l\'instant.');
+      if(contentEl) contentEl.innerHTML = `<p class="dash-empty">${err.message || 'Génération impossible.'} Réessaie, ou consulte les liens officiels ci-dessous.</p>`;
+      showToast(err.message || 'Impossible de générer les conseils pour l\'instant.');
     }
   }));
 }
@@ -5495,26 +5611,18 @@ document.getElementById('ai-ask-btn').addEventListener('click', async ()=>{
       destinations: state.destinations.map(d=>({ville:d.name, pays:d.country, du:d.start, au:d.end, transport:d.transportModes})),
       voyageurs: state.travelers.map(t=>({prenom:fullName(t), type:travelerAgeInfo(t).type})),
     };
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 800,
-        messages: [{ role:'user', content: `Contexte du voyage (JSON) : ${JSON.stringify(context)}\\n\\nQuestion du voyageur : ${question}\\n\\nSi la question porte sur des infos qui changent dans le temps (prix, météo, actualité, faisabilité d'un trajet), vérifie sur internet avant de répondre. Réponds en français, de façon concrète et concise.` }],
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      }),
-    });
-    const data = await response.json();
-    const text = (data.content||[]).map(c=>c.text||'').filter(Boolean).join('\\n\\n').trim();
+    const prompt = `Contexte du voyage (JSON) : ${JSON.stringify(context)}\n\nQuestion du voyageur : ${question}\n\nSi la question porte sur des infos qui changent dans le temps (prix, météo, actualité, faisabilité d'un trajet), vérifie sur internet avant de répondre. Réponds en français, de façon concrète et concise.`;
+    const data = await callProxyPost('/api/ai/ask', { prompt, useSearch: true });
+    const text = (data.text||'').trim();
     answerBox.innerHTML = text ? `<div class="doc-preview-row" style="align-items:flex-start;white-space:pre-wrap;">${text}</div>` : '<p class="dash-empty">Pas de réponse exploitable.</p>';
   }catch(err){
-    answerBox.innerHTML = '<p class="dash-empty">Cette fonctionnalité ne fonctionne que lorsque ce prototype est ouvert directement dans Claude — elle échoue si tu l\'ouvres comme fichier local dans un navigateur classique.</p>';
+    answerBox.innerHTML = `<p class="dash-empty">${err.message || "Impossible de contacter l'assistant IA."} Vérifie le serveur relais (⚙ Paramètres) et que GEMINI_API_KEY est configuré côté serveur.</p>`;
   }
 });
 
 /* ---------------- init global ---------------- */
 function renderAll(){
+  syncHubEndWithReturnTicket();
   renderTopChips();
   renderTripDateRange();
   renderOriginBanner();
