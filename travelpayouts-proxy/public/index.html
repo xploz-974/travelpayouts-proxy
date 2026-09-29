@@ -606,7 +606,7 @@ input,select,textarea{font-family:inherit;}
         <div class="dash-list" id="packingList" style="max-width:720px;"></div>
 
         <div class="section-head" style="margin-top:26px;">
-          <div><h2 style="font-size:16px;">Poser une question à l'IA</h2><p>Nécessite d'ouvrir ce prototype directement dans Claude — ne fonctionnera pas si tu ouvres le fichier téléchargé dans un navigateur classique.</p></div>
+          <div><h2 style="font-size:16px;">Poser une question à l'IA</h2><p>Pose n'importe quelle question sur ton voyage — l'assistant peut vérifier sur internet si besoin (prix, météo, actualité...).</p></div>
         </div>
         <div style="max-width:720px;">
           <textarea id="ai-question" placeholder="Ex. Que dois-je vérifier avant de partir avec des enfants en bas âge ?" style="width:100%;min-height:70px;padding:10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;"></textarea>
@@ -707,7 +707,7 @@ input,select,textarea{font-family:inherit;}
         <div class="section-head">
           <div>
             <h2>Conseils &amp; juridique</h2>
-            <p>Par destination — vaccins, pharmacie, lois locales, argent, bons plans. Généré par IA + recherche web (Claude), vérifié nulle part ailleurs que sur internet au moment de la génération.</p>
+            <p>Par destination — vaccins, pharmacie, lois locales, argent, bons plans. Généré par IA + recherche web, vérifié nulle part ailleurs que sur internet au moment de la génération.</p>
           </div>
         </div>
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
@@ -2646,35 +2646,19 @@ function readFileAsDataUrl(file){
 }
 
 /* ============================ LECTURE AUTOMATIQUE DE PIÈCE D'IDENTITÉ (IA) ============================
-   Utilise Claude (déjà accessible depuis cet artefact, sans clé à saisir) en vision
-   pour lire une photo de passeport / carte d'identité et en extraire les champs utiles.
-   Ne fonctionne que lorsque ce prototype est ouvert directement dans Claude — en dehors,
-   l'appel échoue proprement et l'utilisateur peut toujours remplir les champs à la main.
-   Important : Claude ne devine jamais un champ illisible, il le laisse vide plutôt que
-   d'inventer une donnée officielle (numéro de document, date...).
+   Passe par le serveur relais (/api/ai/vision, voir src/routes/ai.js) qui appelle Gemini
+   avec la clé côté serveur — le navigateur ne voit jamais la clé. Lit une photo de
+   passeport / carte d'identité et en extrait les champs utiles. Important : l'IA ne
+   devine jamais un champ illisible, elle le laisse vide plutôt que d'inventer une
+   donnée officielle (numéro de document, date...).
 =========================================================================================================== */
 async function extractIdentityFromImage(dataUrl, mimeType){
   const base64 = dataUrl.split(',')[1];
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 500,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-          { type: 'text', text: `Cette image est une pièce d'identité ou un passeport. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour ni balises markdown, au format exact :
+  const prompt = `Cette image est une pièce d'identité ou un passeport. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour ni balises markdown, au format exact :
 {"prenom":"","deuxiemePrenom":"","nom":"","dateNaissance":"AAAA-MM-JJ ou vide","typeDocument":"Passeport ou Carte d'identité","numeroDocument":"","dateExpiration":"AAAA-MM-JJ ou vide","nationalite":""}
-Si un champ est illisible, flou ou absent, laisse la valeur vide — ne devine jamais.` },
-        ],
-      }],
-    }),
-  });
-  const data = await response.json();
-  const text = (data.content||[]).map(c=>c.text||'').join('').trim();
-  const cleaned = text.replace(/```json|```/g,'').trim();
+Si un champ est illisible, flou ou absent, laisse la valeur vide — ne devine jamais.`;
+  const data = await callProxyPost('/api/ai/vision', { imageBase64: base64, mimeType, prompt });
+  const cleaned = (data.text||'').replace(/```json|```/g,'').trim();
   return JSON.parse(cleaned);
 }
 
@@ -2782,7 +2766,7 @@ function openTravelerModal(id){
     }catch(err){
       console.error(err);
       btn.textContent = originalLabel; btn.disabled = false;
-      showToast("Extraction impossible (fonctionne uniquement dans Claude, avec une image lisible).");
+      showToast(err.message || "Extraction impossible — vérifie le serveur relais (⚙ Paramètres) et l'image, ou remplis les champs manuellement.");
     }
   }));
 }
@@ -2878,7 +2862,7 @@ function openAddTravelerModal(groupId, existingTraveler){
       statusEl.innerHTML = `Informations détectées ✓ — vérifie-les avant de valider${info.numeroDocument ? ' (n° document : <b>'+info.numeroDocument+'</b>)' : ' (numéro non détecté, à ajouter à la main si besoin)'}.`;
     }catch(err){
       console.error(err);
-      statusEl.textContent = "Lecture automatique impossible (fonctionne uniquement dans Claude, avec une image nette). Remplis les champs manuellement.";
+      statusEl.textContent = (err.message || "Lecture automatique impossible.") + " Remplis les champs manuellement.";
     }
   });
 
@@ -5206,26 +5190,11 @@ document.getElementById('bud-currency').addEventListener('change', async e=>{
    tout retaper à la main. */
 async function extractReceiptFromImage(dataUrl, mimeType){
   const base64 = dataUrl.split(',')[1];
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 300,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-          { type: 'text', text: `Ceci est une photo de reçu ou de facture. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
+  const prompt = `Ceci est une photo de reçu ou de facture. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
 {"label":"","amountEUR":0,"originalAmount":0,"originalCurrency":""}
-"label" : ce que c'est en quelques mots (ex. "Dîner restaurant", "Taxi aéroport"). "amountEUR" : le montant total converti en euros si la devise n'est pas l'euro (estimation raisonnable si besoin), sinon le montant tel quel. "originalAmount"/"originalCurrency" : le montant et la devise tels qu'affichés sur le reçu. Si illisible, mets des valeurs vides/à 0.` },
-        ],
-      }],
-    }),
-  });
-  const data = await response.json();
-  const text = (data.content||[]).map(c=>c.text||'').join('').trim();
-  return JSON.parse(text.replace(/```json|```/g,'').trim());
+"label" : ce que c'est en quelques mots (ex. "Dîner restaurant", "Taxi aéroport"). "amountEUR" : le montant total converti en euros si la devise n'est pas l'euro (estimation raisonnable si besoin), sinon le montant tel quel. "originalAmount"/"originalCurrency" : le montant et la devise tels qu'affichés sur le reçu. Si illisible, mets des valeurs vides/à 0.`;
+  const data = await callProxyPost('/api/ai/vision', { imageBase64: base64, mimeType, prompt });
+  return JSON.parse((data.text||'').replace(/```json|```/g,'').trim());
 }
 
 document.getElementById('bud-scan-receipt').addEventListener('change', async e=>{
@@ -5244,7 +5213,7 @@ document.getElementById('bud-scan-receipt').addEventListener('change', async e=>
     }, 50);
   }catch(err){
     console.error(err);
-    showToast('Lecture automatique impossible (fonctionne uniquement dans Claude, avec une image lisible). Remplis le frais manuellement.');
+    showToast((err.message || 'Lecture automatique impossible.') + ' Remplis le frais manuellement.');
     document.getElementById('bud-add-item-btn').click();
   }
 });
@@ -5470,7 +5439,7 @@ function renderActivities(){
 /* ============================ CONSEILS & JURIDIQUE ============================
    Astuces argent / applis transport : générales, stables, valables pour tout le
    monde — ne dépendent pas d'internet. Conseils par destination (vaccins, lois,
-   bons plans) : générés à la demande par Claude + recherche web, mis en cache
+   bons plans) : générés à la demande par l'assistant IA + recherche web, mis en cache
    dans le dossier avec une date, à considérer comme un point de départ, pas une
    source officielle — les liens officiels sont toujours affichés à côté.
 =================================================================================== */
@@ -5508,15 +5477,7 @@ function renderTransportApps(){
 
 async function fetchCountryAdvice(dest){
   const context = `${dest.name}, ${dest.country}`;
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1200,
-      messages: [{
-        role: 'user',
-        content: `Un voyageur français part à ${context}. Cherche sur internet des informations à jour et réponds UNIQUEMENT avec un objet JSON valide (pas de texte autour, pas de markdown), avec des puces courtes (8 mots maximum chacune, un emoji au début de chaque puce, 3 à 5 puces par catégorie, ton léger et concret, pas de phrases longues) :
+  const prompt = `Un voyageur français part à ${context}. Cherche sur internet des informations à jour et réponds UNIQUEMENT avec un objet JSON valide (pas de texte autour, pas de markdown), avec des puces courtes (8 mots maximum chacune, un emoji au début de chaque puce, 3 à 5 puces par catégorie, ton léger et concret, pas de phrases longues) :
 {"vaccins":[],"pharmacie":[],"lois":[],"mangerPasCher":[],"dormirPasCher":[],"transportLocal":[]}
 - vaccins : vaccins recommandés ou obligatoires pour un séjour touristique standard
 - pharmacie : médicaments/trousse utiles pour un trajet long (adultes et enfants)
@@ -5524,14 +5485,9 @@ async function fetchCountryAdvice(dest){
 - mangerPasCher : options et lieux typiques pour manger économique sur place
 - dormirPasCher : options d'hébergement économique typiques de cette destination
 - transportLocal : comment se déplacer localement pas cher (dont apps si utiles)
-Si une info est incertaine, dis-le brièvement plutôt que d'inventer.`,
-      }],
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-    }),
-  });
-  const data = await response.json();
-  const text = (data.content||[]).map(c=>c.text||'').filter(Boolean).join('').trim();
-  const cleaned = text.replace(/```json|```/g,'').trim();
+Si une info est incertaine, dis-le brièvement plutôt que d'inventer.`;
+  const data = await callProxyPost('/api/ai/ask', { prompt, useSearch: true });
+  const cleaned = (data.text||'').replace(/```json|```/g,'').trim();
   return JSON.parse(cleaned);
 }
 
@@ -5592,8 +5548,8 @@ function renderCountryAdvice(){
     }catch(err){
       console.error(err);
       btn.textContent = originalLabel; btn.disabled = false;
-      if(contentEl) contentEl.innerHTML = '<p class="dash-empty">Génération impossible (fonctionne uniquement dans Claude, avec connexion). Réessaie, ou consulte les liens officiels ci-dessous.</p>';
-      showToast('Impossible de générer les conseils pour l\'instant.');
+      if(contentEl) contentEl.innerHTML = `<p class="dash-empty">${err.message || 'Génération impossible.'} Réessaie, ou consulte les liens officiels ci-dessous.</p>`;
+      showToast(err.message || 'Impossible de générer les conseils pour l\'instant.');
     }
   }));
 }
@@ -5608,21 +5564,12 @@ document.getElementById('ai-ask-btn').addEventListener('click', async ()=>{
       destinations: state.destinations.map(d=>({ville:d.name, pays:d.country, du:d.start, au:d.end, transport:d.transportModes})),
       voyageurs: state.travelers.map(t=>({prenom:fullName(t), type:travelerAgeInfo(t).type})),
     };
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 800,
-        messages: [{ role:'user', content: `Contexte du voyage (JSON) : ${JSON.stringify(context)}\\n\\nQuestion du voyageur : ${question}\\n\\nSi la question porte sur des infos qui changent dans le temps (prix, météo, actualité, faisabilité d'un trajet), vérifie sur internet avant de répondre. Réponds en français, de façon concrète et concise.` }],
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      }),
-    });
-    const data = await response.json();
-    const text = (data.content||[]).map(c=>c.text||'').filter(Boolean).join('\\n\\n').trim();
+    const prompt = `Contexte du voyage (JSON) : ${JSON.stringify(context)}\n\nQuestion du voyageur : ${question}\n\nSi la question porte sur des infos qui changent dans le temps (prix, météo, actualité, faisabilité d'un trajet), vérifie sur internet avant de répondre. Réponds en français, de façon concrète et concise.`;
+    const data = await callProxyPost('/api/ai/ask', { prompt, useSearch: true });
+    const text = (data.text||'').trim();
     answerBox.innerHTML = text ? `<div class="doc-preview-row" style="align-items:flex-start;white-space:pre-wrap;">${text}</div>` : '<p class="dash-empty">Pas de réponse exploitable.</p>';
   }catch(err){
-    answerBox.innerHTML = '<p class="dash-empty">Cette fonctionnalité ne fonctionne que lorsque ce prototype est ouvert directement dans Claude — elle échoue si tu l\'ouvres comme fichier local dans un navigateur classique.</p>';
+    answerBox.innerHTML = `<p class="dash-empty">${err.message || "Impossible de contacter l'assistant IA."} Vérifie le serveur relais (⚙ Paramètres) et que GEMINI_API_KEY est configuré côté serveur.</p>`;
   }
 });
 

@@ -27,6 +27,7 @@ import { flightsRouter } from './src/routes/flights.js';
 import { duffelRouter } from './src/routes/duffel.js';
 import { bookingRouter } from './src/routes/booking.js';
 import { backupRouter } from './src/routes/backup.js';
+import { aiRouter } from './src/routes/ai.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,6 +51,7 @@ app.use(flightsRouter);
 app.use(duffelRouter);
 app.use(bookingRouter);
 app.use(backupRouter);
+app.use(aiRouter);
 
 app.listen(PORT, () => {
   console.log(`Serveur relais Travelpayouts démarré sur http://localhost:${PORT}`);
