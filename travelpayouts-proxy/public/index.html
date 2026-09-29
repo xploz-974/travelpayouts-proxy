@@ -525,7 +525,7 @@ input,select,textarea{font-family:inherit;}
         <div class="filter-bar" style="background:var(--paper);border-radius:8px;padding:10px 12px;">
           <select id="googleHotelsDestSelect"></select>
           <button class="btn ghost small" id="googleHotelsSearchBtn">🔍 Chercher sur Google Hotels (1 destination)</button>
-          <span class="forecast-note" style="margin:0;">Quota gratuit limité — recherche une destination à la fois plutôt qu'en boucle.</span>
+          <span class="forecast-note" style="margin:0;" id="googleHotelsQuota"></span>
         </div>
         <div class="stay-list" id="fullStayList" style="max-height:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;"></div>
         <p class="forecast-note">Note technique — brancher de vraies données ici demande un backend qui interroge : l'API Amadeus / Booking.com Affiliate / Expedia Rapid pour les hôtels, l'API Airbnb (via un partenaire agréé, pas d'API publique officielle) et SerpApi "Google Hotels" pour agréger Google. Le front reste identique : seule la source des cartes change.</p>
@@ -2471,6 +2471,27 @@ document.getElementById('refreshBookingBtn').addEventListener('click', async ()=
   for(const dest of state.destinations){ await fetchBookingHotels(dest); }
 });
 
+/* Compteur discret de quota SerpApi (plan gratuit limité en recherches/mois) —
+   lu directement depuis le compte SerpApi (pas un comptage local approximatif),
+   pour éviter les mauvaises surprises en fin de mois. Cet appel ne consomme pas
+   de recherche (endpoint "account" séparé de l'endpoint de recherche). */
+async function refreshGoogleHotelsQuota(){
+  const el = document.getElementById('googleHotelsQuota');
+  if(!el || !state.settings.proxyUrl) return;
+  try{
+    const data = await callProxy('/api/google-hotels/quota');
+    if(data.searchesLeft != null && data.searchesPerMonth != null){
+      el.textContent = `Quota SerpApi : ${data.searchesLeft}/${data.searchesPerMonth} recherches restantes ce mois-ci.`;
+    } else if(data.searchesLeft != null){
+      el.textContent = `Quota SerpApi : ${data.searchesLeft} recherches restantes ce mois-ci.`;
+    } else {
+      el.textContent = '';
+    }
+  }catch(err){
+    el.textContent = '';
+  }
+}
+
 document.getElementById('googleHotelsSearchBtn').addEventListener('click', async ()=>{
   const destId = document.getElementById('googleHotelsDestSelect').value;
   const dest = state.destinations.find(d=>d.id===destId);
@@ -2483,6 +2504,7 @@ document.getElementById('googleHotelsSearchBtn').addEventListener('click', async
       id: dest.id+'-google-'+i+'-'+Date.now(),
       destId: dest.id, name: h.name, source: 'Google', price: Math.round(parseFloat(h.price)||0), rating: h.rating, real: true,
     }));
+    refreshGoogleHotelsQuota();
     if(!fresh.length){ showErrorModal('Aucun résultat Google', `Aucun hôtel Google trouvé pour ${dest.name}.`); return; }
     state.stays = state.stays.filter(s=> !(s.destId===dest.id && s.source==='Google' && s.real));
     state.stays.push(...fresh);
@@ -2491,7 +2513,7 @@ document.getElementById('googleHotelsSearchBtn').addEventListener('click', async
     showToast(`${fresh.length} hébergement(s) Google ajouté(s) pour ${dest.name} ✓`);
   }catch(err){
     console.error(err);
-    showErrorModal('Google Hotels indisponible', (err.message||'Erreur inconnue') + ' — vérifie SERPAPI_KEY côté serveur relais, ou ton quota gratuit mensuel.');
+    showErrorModal('Google Hotels indisponible', err.message||'Erreur inconnue');
   }
 });
 
@@ -5652,6 +5674,7 @@ function renderAll(){
   renderTransportApps();
   if(state.settings.adminUnlocked) document.getElementById('adminNavItem').style.display = '';
   renderAll();
+  refreshGoogleHotelsQuota();
   if(!found){
     setTimeout(()=> showToast('Aucune sauvegarde trouvée sur cet appareil — clique sur 🕐 Historique pour en importer une, ou continue avec les données de démonstration.'), 800);
   }
