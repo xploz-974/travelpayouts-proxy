@@ -463,16 +463,9 @@ input,select,textarea{font-family:inherit;}
         <div class="section-head">
           <div>
             <h2>Billets d'avion</h2>
-            <p>Fais une demande de devis, ou saisis directement un prix reçu d'une agence (ex. Air Austral) pour l'appliquer à un ou plusieurs voyageurs.</p>
+            <p>Enregistre à l'avance les billets déjà réservés ou un devis reçu d'une agence (ex. Air Austral), pour l'appliquer à un ou plusieurs voyageurs.</p>
           </div>
           <button class="btn ghost" id="addTicketBtn">+ Ajouter un billet / devis</button>
-        </div>
-
-        <div class="dash-card dash-wide" style="margin-bottom:16px;">
-          <div class="dc-head"><h3>Rechercher un prix réel, étape par étape</h3></div>
-          <p class="forecast-note" style="margin-bottom:10px;">Interroge directement Travelpayouts / Duffel pour chaque étape avion de ton itinéraire.</p>
-          <div id="ticketRealPrices" class="dash-list"></div>
-          <p class="forecast-note" style="margin-top:10px;">💡 Ajoute aussi ton billet retour (trajet se terminant par "(retour)") avec sa date exacte ci-dessous — l'onglet Itinéraire prolongera alors automatiquement le séjour sur ta dernière étape jusqu'à ce jour-là.</p>
         </div>
 
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
@@ -482,14 +475,9 @@ input,select,textarea{font-family:inherit;}
           <div id="flightWidgetWrap" style="min-height:60px;"></div>
         </div>
 
-        <div class="dash-card dash-wide" style="margin-bottom:16px;">
-          <div class="dc-head"><h3>Demander un devis</h3></div>
-          <p class="forecast-note" style="margin-bottom:10px;">Ouvre une recherche réelle chez une compagnie ou une agence pour ton trajet complet, à comparer aux offres déjà enregistrées ci-dessous.</p>
-          <div id="ticketQuoteLinks" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
-        </div>
-
         <div class="dash-card dash-wide">
           <div class="dc-head"><h3>Billets enregistrés</h3></div>
+          <p class="forecast-note" style="margin-bottom:10px;">💡 Ajoute ton billet retour (trajet se terminant par "(retour)") avec sa date exacte — l'onglet Hébergements prolongera alors automatiquement le séjour sur ta dernière étape jusqu'à ce jour-là.</p>
           <div id="ticketsList" class="dash-list"></div>
         </div>
       </div>
@@ -1755,7 +1743,6 @@ async function fetchRealFlight(dest){
       dest.realFlightAirline = best.airline;
       dest.realFlightSource = 'Travelpayouts';
       renderDestRow();
-      renderTicketRealPrices();
       autosave();
       showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
     });
@@ -1787,7 +1774,6 @@ async function fetchDuffelFlight(dest){
       dest.realFlightAirline = best.airline;
       dest.realFlightSource = 'Duffel';
       renderDestRow();
-      renderTicketRealPrices();
       autosave();
       showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
     });
@@ -4934,50 +4920,10 @@ function totalTicketsCostForTraveler(t){
   return state.flightTickets.filter(tk=> ticketAppliesTo(tk,t)).reduce((s,tk)=> s+ticketPriceForTraveler(tk,t), 0);
 }
 
-function renderTicketRealPrices(){
-  const wrap = document.getElementById('ticketRealPrices');
-  if(!wrap) return;
-  const dests = [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start)).filter(d=> (d.transportModes||[]).includes('Avion'));
-  if(!dests.length){ wrap.innerHTML = '<p class="dash-empty">Aucune étape en avion pour l\'instant.</p>'; return; }
-  wrap.innerHTML = dests.map(d=> `
-    <div class="dash-row" style="flex-wrap:wrap;gap:8px;" data-ticketprice-row="${d.id}">
-      <span>${d.name}${d.iata?' ('+d.iata+')':''}</span>
-      ${d.realFlightPrice
-        ? `<b>${d.realFlightPrice}€/pers. · ${d.realFlightAirline} <span style="font-weight:400;color:var(--ink-soft);font-size:10px;">(${d.realFlightSource||'?'})</span> <button class="link-btn" style="font-size:10px;" data-tpeditflightprice="${d.id}">modifier</button></b>`
-        : `<span><button class="link-btn" style="font-size:11px;" data-tpfindflight="${d.id}">Travelpayouts →</button> <button class="link-btn" style="font-size:11px;" data-tpfindflightduffel="${d.id}">Duffel →</button></span>`}
-    </div>
-  `).join('');
-  wrap.querySelectorAll('[data-tpfindflight]').forEach(btn=> btn.addEventListener('click', ()=>{
-    const dest = state.destinations.find(x=>x.id===btn.dataset.tpfindflight);
-    if(dest) fetchRealFlight(dest);
-  }));
-  wrap.querySelectorAll('[data-tpfindflightduffel]').forEach(btn=> btn.addEventListener('click', ()=>{
-    const dest = state.destinations.find(x=>x.id===btn.dataset.tpfindflightduffel);
-    if(dest) fetchDuffelFlight(dest);
-  }));
-  wrap.querySelectorAll('[data-tpeditflightprice]').forEach(btn=> btn.addEventListener('click', ()=>{
-    const dest = state.destinations.find(x=>x.id===btn.dataset.tpeditflightprice);
-    if(dest){ delete dest.realFlightPrice; autosave(); renderTicketRealPrices(); }
-  }));
-}
-
 function renderTickets(){
-  renderTicketRealPrices();
   renderFlightWidgetButtons();
   const list = document.getElementById('ticketsList');
-  const linksWrap = document.getElementById('ticketQuoteLinks');
-  if(!list || !linksWrap) return;
-
-  // Liens de demande de devis — construits à partir des vraies étapes du voyage
-  const dests = [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start));
-  const links = [];
-  if(dests.length && state.settings.originIata){
-    const first = dests[0], last = dests[dests.length-1];
-    links.push({label:`Google Flights — ${state.settings.originIata} → ${first.iata||first.name}`, url:`https://www.google.com/travel/flights?q=${encodeURIComponent(`Flights from ${state.settings.originIata} to ${first.iata||first.name} on ${first.start}`)}`});
-    links.push({label:`Google Flights — ${last.iata||last.name} → ${state.settings.originIata} (retour)`, url:`https://www.google.com/travel/flights?q=${encodeURIComponent(`Flights from ${last.iata||last.name} to ${state.settings.originIata} on ${last.end}`)}`});
-  }
-  links.push({label:'Site Air Austral', url:'https://www.air-austral.com'});
-  linksWrap.innerHTML = links.map(l=> `<a href="${l.url}" target="_blank" rel="noopener" class="btn ghost small" style="text-decoration:none;">${l.label} →</a>`).join('');
+  if(!list) return;
 
   if(!state.flightTickets.length){ list.innerHTML = '<p class="dash-empty">Aucun billet enregistré pour l\'instant.</p>'; return; }
   list.innerHTML = state.flightTickets.map(tk=>{
