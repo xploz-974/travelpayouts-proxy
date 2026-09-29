@@ -163,7 +163,10 @@ input,select,textarea{font-family:inherit;}
 .dest-card .transport{font-size:11.5px;color:var(--teal-dark);margin-top:6px;display:flex;align-items:center;gap:5px;}
 
 .itinerary-grid{display:grid;grid-template-columns:1fr 300px;gap:22px;margin-top:20px;align-items:start;}
+.itinerary-grid-solo{grid-template-columns:1fr;}
 .days{display:flex;flex-direction:column;gap:12px;}
+.day-add-stay{align-self:flex-start;background:none;border:1px dashed var(--teal-dark);color:var(--teal-dark);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;}
+.day-add-stay:hover{background:var(--amber-soft);}
 .day-card{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
 .day-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f6f3ec;border-bottom:1px solid var(--line);}
 .day-head .d{font-weight:600;font-size:13.5px;}
@@ -453,13 +456,8 @@ input,select,textarea{font-family:inherit;}
 
         <div id="legsWrap" style="margin-top:18px;"></div>
 
-        <div class="itinerary-grid">
+        <div class="itinerary-grid itinerary-grid-solo">
           <div class="days" id="daysCol"></div>
-          <div class="stay-pool">
-            <h3>Hébergements proposés</h3>
-            <p class="hint">Résultats agrégés Booking · Airbnb · Agoda · Hotels.com · Google Hotels</p>
-            <div class="stay-list" id="poolListItinerary"></div>
-          </div>
         </div>
       </div>
 
@@ -477,6 +475,14 @@ input,select,textarea{font-family:inherit;}
           <div class="dc-head"><h3>Rechercher un prix réel, étape par étape</h3></div>
           <p class="forecast-note" style="margin-bottom:10px;">Interroge directement Travelpayouts / Duffel pour chaque étape avion de ton itinéraire.</p>
           <div id="ticketRealPrices" class="dash-list"></div>
+          <p class="forecast-note" style="margin-top:10px;">💡 Ajoute aussi ton billet retour (trajet se terminant par "(retour)") avec sa date exacte ci-dessous — l'onglet Itinéraire prolongera alors automatiquement le séjour sur ta dernière étape jusqu'à ce jour-là.</p>
+        </div>
+
+        <div class="dash-card dash-wide" style="margin-bottom:16px;">
+          <div class="dc-head"><h3>Recherche de vols — partenaire</h3></div>
+          <p class="forecast-note" style="margin-bottom:10px;">Boutons générés automatiquement d'après ton aéroport de départ et les destinations déjà planifiées dans l'itinéraire (avec leur code aéroport renseigné). Le trajet et les dates pré-remplis restent modifiables directement dans le moteur de recherche ci-dessous si tu veux comparer un autre vol.</p>
+          <div id="flightWidgetButtons" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+          <div id="flightWidgetWrap" style="min-height:60px;"></div>
         </div>
 
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
@@ -684,6 +690,14 @@ input,select,textarea{font-family:inherit;}
             <h2>Activités &amp; achats</h2>
             <p>Par destination et par thème — vêtements, matériel, parcs d'attraction, restaurants, change, ou tout autre besoin. Chacun ajoute ses idées, toute la famille les voit ; les liens ouvrent Maps/Google/TripAdvisor pour comparer sur place.</p>
           </div>
+        </div>
+        <div class="dash-card dash-wide" style="margin-bottom:16px;">
+          <div class="dc-head"><h3>Activités populaires — recherche partenaire</h3></div>
+          <div style="min-height:60px;"><script async src="https://tpscr.com/content?currency=EUR&trs=573095&shmarker=776652&locale=fr&city_id=4&category=1&amount=3&powered_by=true&campaign_id=137&promo_id=4497" charset="utf-8"></script></div>
+        </div>
+        <div class="dash-card dash-wide" style="margin-bottom:16px;">
+          <div class="dc-head"><h3>Bons plans Thaïlande — recherche partenaire</h3></div>
+          <div style="min-height:60px;"><script async src="https://tpscr.com/content?trs=573095&shmarker=776652&locale=en&country=Thailand&powered_by=true&color_button=%23f2685f&color_focused=%23f2685f&secondary=%23FFFFFF&dark=%2311100f&light=%23FFFFFF&special=%23C4C4C4&border_radius=5&plain=false&no_labels=true&promo_id=8588&campaign_id=541" charset="utf-8"></script></div>
         </div>
         <div id="activitiesWrap"></div>
       </div>
@@ -2248,16 +2262,7 @@ function deleteStay(id){
 
 /* ---------------- itinerary pool + days ---------------- */
 function renderItinerary(){
-  const pool = document.getElementById('poolListItinerary');
-  const visibleStays = state.settings.realDataOnly ? state.stays.filter(s=>s.real) : state.stays;
-  pool.innerHTML = visibleStays.map(s=>stayCardHTML(s,true)).join('') || (state.settings.realDataOnly
-    ? '<p class="dash-empty">Aucun prix réel pour l\'instant. Va dans l\'onglet Hébergements et clique sur "🔄 Hôtels Duffel", "🔄 Hôtels Booking.com", ou ajoute un hébergement manuellement.</p>'
-    : '<p class="dash-empty">Aucun hébergement dans le comparateur.</p>');
-  attachDrag(pool);
-  pool.querySelectorAll('[data-delstay]').forEach(btn=> btn.addEventListener('click', e=>{ e.stopPropagation(); deleteStay(btn.dataset.delstay); }));
-
   const col = document.getElementById('daysCol');
-  const hasAnyStay = state.stays.length > 0;
   col.innerHTML = state.days.map(day => `
     <div class="day-card">
       <div class="day-head">
@@ -2269,30 +2274,15 @@ function renderItinerary(){
           const s = state.stays.find(x=>x.id===sid);
           if(!s) return '';
           return `<div class="placed-item"><span>${s.name} · <span class="src-tag">${s.source}</span> · ${s.price}€</span><button class="remove" data-remove="${day.id}|${sid}">✕</button></div>`;
-        }).join('') || (hasAnyStay
-          ? '<div class="empty-hint">Glissez un hébergement du comparateur ci-contre</div>'
-          : `<div class="empty-hint">Aucun hébergement enregistré pour l'instant. <button class="link-btn" data-quickaddstay="${day.destId||''}">+ En ajouter un</button></div>`)}
+        }).join('') || `<div class="empty-hint">Aucun hébergement assigné à ce jour.</div>`}
+        <button class="day-add-stay" data-adddaystay="${day.id}">+ Ajouter un hébergement</button>
       </div>
     </div>
   `).join('') || '<p class="dash-empty">Ajoutez une destination pour voir apparaître les jours de votre voyage.</p>';
 
-  col.querySelectorAll('[data-quickaddstay]').forEach(btn=> btn.addEventListener('click', ()=>{
-    document.getElementById('addStayBtn')?.click();
+  col.querySelectorAll('[data-adddaystay]').forEach(btn=> btn.addEventListener('click', ()=>{
+    openDayStayPickerModal(btn.dataset.adddaystay);
   }));
-
-  col.querySelectorAll('.dropzone').forEach(zone=>{
-    zone.addEventListener('dragover', e=>{ e.preventDefault(); zone.classList.add('dragover'); });
-    zone.addEventListener('dragleave', ()=> zone.classList.remove('dragover'));
-    zone.addEventListener('drop', e=>{
-      e.preventDefault();
-      zone.classList.remove('dragover');
-      const stayId = e.dataTransfer.getData('text/plain');
-      const dayId = zone.dataset.day;
-      if(!state.placements[dayId].includes(stayId)) state.placements[dayId].push(stayId);
-      renderItinerary();
-      autosave();
-    });
-  });
 
   col.querySelectorAll('[data-remove]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -2302,6 +2292,42 @@ function renderItinerary(){
       autosave();
     });
   });
+}
+
+/* Sélecteur d'hébergement pour un jour donné — remplace l'ancien glisser-déposer
+   depuis une liste dupliquée dans l'onglet Itinéraire : le comparateur complet
+   ne vit désormais que dans l'onglet Hébergements. */
+function openDayStayPickerModal(dayId){
+  const day = state.days.find(d=>d.id===dayId);
+  if(!day) return;
+  const visibleStays = state.settings.realDataOnly ? state.stays.filter(s=>s.real) : state.stays;
+  const already = state.placements[dayId] || [];
+  const options = visibleStays.filter(s=> !already.includes(s.id));
+  const sameDest = options.filter(s=> s.destId===day.destId);
+  const others = options.filter(s=> s.destId!==day.destId);
+  const ordered = [...sameDest, ...others];
+  document.getElementById('modalBody').innerHTML = `
+    <h3>Ajouter un hébergement — ${fmtDate(day.date)} (${day.destName})</h3>
+    ${ordered.length ? `<div class="stay-list" style="max-height:400px;">${ordered.map(s=>`
+      <div class="stay-card" data-pickstay="${s.id}" style="cursor:pointer;">
+        <div class="row1"><div class="stay-name">${s.name}</div><div class="source src-${s.source}">${s.source}</div></div>
+        <div class="row2"><div class="price">${s.price}€ <span>/ nuit</span></div><div class="rating">★ ${s.rating}</div></div>
+      </div>
+    `).join('')}</div>` : `<p class="dash-empty">Aucun hébergement dans le comparateur pour l'instant. Va dans l'onglet Hébergements pour en chercher ou en ajouter un.</p>`}
+    <div class="modal-actions">
+      <button class="btn ghost small" id="modalClose">Fermer</button>
+    </div>
+  `;
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.querySelectorAll('[data-pickstay]').forEach(card=> card.addEventListener('click', ()=>{
+    const sid = card.dataset.pickstay;
+    if(!state.placements[dayId].includes(sid)) state.placements[dayId].push(sid);
+    closeModal();
+    renderItinerary();
+    autosave();
+    showToast('Hébergement ajouté ✓');
+  }));
 }
 
 /* ---------------- full comparateur ---------------- */
@@ -3689,6 +3715,26 @@ function getLastLeg(){
   return [...state.destinations].sort((a,b)=> a.end.localeCompare(b.end))[state.destinations.length-1];
 }
 
+/* Le billet retour (route se terminant par "(retour)", voir buildTripLegs) porte
+   la seule vraie date de fin de séjour connue : le jour où l'avion décolle depuis
+   le hub vers l'origine. Tant que rien n'est saisi, l'app ne peut pas deviner cette
+   date — mais dès qu'un billet retour est enregistré, la dernière étape (le hub)
+   doit couvrir tout le séjour jusqu'à ce jour-là, sans que l'utilisateur ait à
+   éditer les dates à la main. */
+function getReturnTicket(){
+  return state.flightTickets.find(tk=> tk.route && tk.route.trim().endsWith('(retour)') && tk.date);
+}
+function syncHubEndWithReturnTicket(){
+  const ticket = getReturnTicket();
+  if(!ticket) return;
+  const lastLeg = getLastLeg();
+  if(!lastLeg) return;
+  const wantedEnd = new Date(new Date(ticket.date).getTime() + 86400000).toISOString().slice(0,10);
+  if(wantedEnd > lastLeg.end){
+    shiftDestinationDates(lastLeg, lastLeg.start, wantedEnd);
+  }
+}
+
 /* Résumé pour la carte "Destinations" du tableau de bord : indique le trajet aller-retour
    (origine <-> hub) et le détail de chaque petite étape/excursion entre les deux. */
 function destinationsSummaryLabel(){
@@ -4811,6 +4857,7 @@ function renderTicketRealPrices(){
 
 function renderTickets(){
   renderTicketRealPrices();
+  renderFlightWidgetButtons();
   const list = document.getElementById('ticketsList');
   const linksWrap = document.getElementById('ticketQuoteLinks');
   if(!list || !linksWrap) return;
@@ -4849,6 +4896,68 @@ function renderTickets(){
     const tk = state.flightTickets.find(t=>t.id===b.dataset.editticket);
     if(tk) openAddTicketModal(tk);
   }));
+}
+
+/* ============================ WIDGET DE RECHERCHE DE VOLS (partenaire) ============================
+   Le widget tpscr.com lit ses paramètres (default_origin/default_destination) une seule fois,
+   au chargement du <script>. Pour proposer une recherche pertinente sans que l'utilisateur ait à
+   ressaisir ses codes aéroport, on construit une liste de trajets à partir de l'itinéraire déjà
+   renseigné (aéroport de départ + destinations du QCM/de l'itinéraire), puis on ré-injecte un
+   nouveau <script> avec les bons paramètres quand l'utilisateur clique sur un bouton de trajet.
+================================================================================================== */
+function flightWidgetLegs(){
+  const dests = [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start));
+  const origin = state.settings.originIata;
+  const legs = [];
+  const hub = getTripHub();
+  const lastLeg = getLastLeg();
+  if(origin && hub && hub.iata){
+    const ticket = getReturnTicket();
+    const returnDate = ticket ? ticket.date : (lastLeg ? lastLeg.end : null);
+    legs.push({
+      label: `Aller-retour ${origin} → ${hub.iata} (${hub.name}) · ${fmtDate(hub.start)}${returnDate?' → '+fmtDate(returnDate):''}`,
+      from: origin, to: hub.iata, departure: hub.start, ret: returnDate,
+    });
+  }
+  for(let i=1;i<dests.length;i++){
+    const prev = dests[i-1], d = dests[i];
+    if((d.transportModes||[]).includes('Avion') && prev.iata && d.iata){
+      legs.push({ label: `${prev.name} (${prev.iata}) → ${d.name} (${d.iata}) · ${fmtDate(d.start)}`, from: prev.iata, to: d.iata, departure: d.start, ret: null });
+    }
+  }
+  return legs;
+}
+function loadFlightWidget(leg){
+  const wrap = document.getElementById('flightWidgetWrap');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  const params = new URLSearchParams({
+    currency: 'eur', trs: '573095', shmarker: '776652',
+    default_origin: leg.from, default_destination: leg.to,
+    locale: 'fr', stops: 'any', show_hotels: 'true', powered_by: 'true',
+    border_radius: '0', plain: 'true', color_button: '#00A991', color_button_text: '#ffffff',
+    campaign_id: '111', promo_id: '3414',
+  });
+  const s = document.createElement('script');
+  s.async = true;
+  s.charset = 'utf-8';
+  s.src = 'https://tpscr.com/content?' + params.toString();
+  wrap.appendChild(s);
+}
+function renderFlightWidgetButtons(){
+  const box = document.getElementById('flightWidgetButtons');
+  if(!box) return;
+  const legs = flightWidgetLegs();
+  if(!legs.length){
+    box.innerHTML = '<p class="forecast-note">Renseigne ton aéroport de départ (⚙ Paramètres) et au moins une destination en avion pour voir apparaître des recherches automatiques.</p>';
+    return;
+  }
+  box.innerHTML = legs.map((l,i)=> `<button class="btn ghost small" data-loadwidget="${i}">${l.label}</button>`).join('');
+  box.querySelectorAll('[data-loadwidget]').forEach(btn=> btn.addEventListener('click', ()=> loadFlightWidget(legs[+btn.dataset.loadwidget])));
+  if(!box.dataset.loaded){
+    loadFlightWidget(legs[0]);
+    box.dataset.loaded = '1';
+  }
 }
 
 function buildTripLegs(){
@@ -5519,6 +5628,7 @@ document.getElementById('ai-ask-btn').addEventListener('click', async ()=>{
 
 /* ---------------- init global ---------------- */
 function renderAll(){
+  syncHubEndWithReturnTicket();
   renderTopChips();
   renderTripDateRange();
   renderOriginBanner();
