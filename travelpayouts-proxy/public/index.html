@@ -167,19 +167,24 @@ input,select,textarea{font-family:inherit;}
 .days{display:flex;flex-direction:column;gap:12px;}
 .day-add-stay{align-self:flex-start;background:none;border:1px dashed var(--teal-dark);color:var(--teal-dark);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;}
 .day-add-stay:hover{background:var(--amber-soft);}
-.day-card{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
-.day-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f6f3ec;border-bottom:1px solid var(--line);}
-.day-head .d{font-weight:600;font-size:13.5px;}
-.day-head .loc{font-size:11.5px;color:var(--ink-soft);}
-.dropzone{min-height:56px;padding:10px 14px;display:flex;flex-direction:column;gap:8px;transition:background .15s;}
-.dropzone.dragover{background:var(--amber-soft);}
-.dropzone .empty-hint{font-size:12px;color:#9aa6a1;font-style:italic;padding:6px 2px;}
-.placed-item{
-  display:flex;justify-content:space-between;align-items:center;gap:8px;background:#f0ede4;border:1px solid var(--line);
-  border-radius:7px;padding:7px 10px;font-size:12.6px;
-}
-.placed-item .src-tag{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--teal);color:#fff;font-weight:600;}
-.placed-item .remove{background:none;border:none;color:#a04b3f;font-size:15px;line-height:1;padding:0 2px;}
+/* Groupe compact : les jours consécutifs d'une même destination sont repliés sous un
+   seul en-tête (sinon un voyage de 3 semaines affiche 20+ cartes pleine largeur). */
+.day-group{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+.day-group-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;background:#f6f3ec;cursor:pointer;user-select:none;}
+.day-group-head:hover{background:#efeadf;}
+.day-group-head .dg-title{font-weight:600;font-size:13.5px;}
+.day-group-head .dg-sub{font-size:11.5px;color:var(--ink-soft);margin-top:1px;}
+.day-group-head .dg-arrow{transition:transform .15s;font-size:12px;color:var(--ink-soft);flex-shrink:0;}
+.day-group.expanded .dg-arrow{transform:rotate(90deg);}
+.day-group-body{display:none;border-top:1px solid var(--line);}
+.day-group.expanded .day-group-body{display:block;}
+.day-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.day-row:last-child{border-bottom:none;}
+.day-row .dr-date{font-size:12px;font-weight:600;flex-shrink:0;min-width:78px;}
+.day-row .dr-stays{flex:1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:180px;}
+.day-row .dr-chip{display:flex;align-items:center;gap:5px;background:#f0ede4;border:1px solid var(--line);border-radius:7px;padding:4px 8px;font-size:11.6px;}
+.day-row .dr-chip .remove{background:none;border:none;color:#a04b3f;font-size:13px;line-height:1;padding:0 1px;cursor:pointer;}
+.day-row .dr-empty{font-size:11.6px;color:#9aa6a1;font-style:italic;}
 
 .stay-pool{position:sticky;top:0;}
 .stay-pool h3{font-size:14px;margin-bottom:4px;}
@@ -356,10 +361,6 @@ input,select,textarea{font-family:inherit;}
     <button class="nav-item" data-view="meteo">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19a4.5 4.5 0 000-9 6 6 0 10-11.4 3M9 13a4 4 0 104 4"/></svg>
       <span class="label">Météo</span>
-    </button>
-    <button class="nav-item" data-view="activites">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/><path d="M3 12l1.5 1.5M21 3l-2 2"/><circle cx="7" cy="7" r="2"/></svg>
-      <span class="label">Activités &amp; achats</span>
     </button>
     <button class="nav-item" data-view="activites">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/><path d="M3 12l1.5 1.5M21 3l-2 2"/><circle cx="7" cy="7" r="2"/></svg>
@@ -2261,31 +2262,77 @@ function deleteStay(id){
 }
 
 /* ---------------- itinerary pool + days ---------------- */
+/* Groupe les jours par destination (pas par carte individuelle) : sur un voyage
+   long, une carte par jour occupe une page entière. On replie donc les jours
+   consécutifs d'une même destination sous un seul en-tête cliquable, avec la
+   plage de dates et le nombre d'hébergements déjà assignés en résumé. L'état
+   ouvert/replié est volatile (pas sauvegardé) — chaque étape se souvient juste
+   de son état pendant la session en cours. */
+const dayGroupExpanded = {};
+function groupDaysByDestination(){
+  const sorted = [...state.days].sort((a,b)=> a.date.localeCompare(b.date));
+  const groups = [];
+  sorted.forEach(day=>{
+    const last = groups[groups.length-1];
+    if(last && last.destId===day.destId) last.days.push(day);
+    else groups.push({ destId: day.destId, destName: day.destName, days: [day] });
+  });
+  return groups;
+}
 function renderItinerary(){
   const col = document.getElementById('daysCol');
-  col.innerHTML = state.days.map(day => `
-    <div class="day-card">
-      <div class="day-head">
-        <div class="d">${fmtDate(day.date)}</div>
-        <div class="loc">${day.destName}</div>
+  const groups = groupDaysByDestination();
+  if(!groups.length){ col.innerHTML = '<p class="dash-empty">Ajoutez une destination pour voir apparaître les jours de votre voyage.</p>'; return; }
+
+  col.innerHTML = groups.map((g,gi)=>{
+    const groupKey = g.destId+'|'+g.days[0].date;
+    if(!(groupKey in dayGroupExpanded)) dayGroupExpanded[groupKey] = groups.length===1;
+    const expanded = dayGroupExpanded[groupKey];
+    const nights = g.days.length;
+    const rangeLabel = nights>1 ? `${fmtDate(g.days[0].date)} → ${fmtDate(g.days[nights-1].date)}` : fmtDate(g.days[0].date);
+    const withStay = g.days.filter(d=> (state.placements[d.id]||[]).length).length;
+    return `
+    <div class="day-group${expanded?' expanded':''}" data-groupkey="${groupKey}">
+      <div class="day-group-head" data-togglegroup="${groupKey}">
+        <div>
+          <div class="dg-title">${g.destName}</div>
+          <div class="dg-sub">${rangeLabel} · ${nights} jour${nights>1?'s':''} · ${withStay}/${nights} avec hébergement</div>
+        </div>
+        <span class="dg-arrow">▶</span>
       </div>
-      <div class="dropzone" data-day="${day.id}">
-        ${(state.placements[day.id]||[]).map(sid=>{
-          const s = state.stays.find(x=>x.id===sid);
-          if(!s) return '';
-          return `<div class="placed-item"><span>${s.name} · <span class="src-tag">${s.source}</span> · ${s.price}€</span><button class="remove" data-remove="${day.id}|${sid}">✕</button></div>`;
-        }).join('') || `<div class="empty-hint">Aucun hébergement assigné à ce jour.</div>`}
-        <button class="day-add-stay" data-adddaystay="${day.id}">+ Ajouter un hébergement</button>
+      <div class="day-group-body">
+        ${g.days.map(day => `
+          <div class="day-row">
+            <div class="dr-date">${fmtDate(day.date)}</div>
+            <div class="dr-stays">
+              ${(state.placements[day.id]||[]).map(sid=>{
+                const s = state.stays.find(x=>x.id===sid);
+                if(!s) return '';
+                return `<span class="dr-chip">${s.name} · ${s.price}€ <button class="remove" data-remove="${day.id}|${sid}" title="Retirer">✕</button></span>`;
+              }).join('') || `<span class="dr-empty">Aucun hébergement assigné.</span>`}
+            </div>
+            <button class="day-add-stay" data-adddaystay="${day.id}">+ Ajouter</button>
+          </div>
+        `).join('')}
       </div>
     </div>
-  `).join('') || '<p class="dash-empty">Ajoutez une destination pour voir apparaître les jours de votre voyage.</p>';
+  `;
+  }).join('');
 
-  col.querySelectorAll('[data-adddaystay]').forEach(btn=> btn.addEventListener('click', ()=>{
+  col.querySelectorAll('[data-togglegroup]').forEach(head=> head.addEventListener('click', ()=>{
+    const key = head.dataset.togglegroup;
+    dayGroupExpanded[key] = !dayGroupExpanded[key];
+    renderItinerary();
+  }));
+
+  col.querySelectorAll('[data-adddaystay]').forEach(btn=> btn.addEventListener('click', e=>{
+    e.stopPropagation();
     openDayStayPickerModal(btn.dataset.adddaystay);
   }));
 
   col.querySelectorAll('[data-remove]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
       const [dayId, stayId] = btn.dataset.remove.split('|');
       state.placements[dayId] = state.placements[dayId].filter(x=>x!==stayId);
       renderItinerary();
