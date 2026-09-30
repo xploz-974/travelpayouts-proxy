@@ -222,7 +222,6 @@ input,select,textarea{font-family:inherit;}
 .src-Agoda{background:#5b2d8e;}
 .src-Hotels{background:#d0122a;}
 .src-Google{background:#4285F4;}
-.src-Amadeus{background:#00205b;}
 .stay-card .row2{display:flex;justify-content:space-between;align-items:center;margin-top:6px;}
 .stay-card .price{font-weight:700;color:var(--teal-dark);font-size:13.5px;}
 .stay-card .price span{font-weight:400;color:var(--ink-soft);font-size:10.8px;}
@@ -512,7 +511,6 @@ input,select,textarea{font-family:inherit;}
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn ghost" id="refreshDuffelBtn">🔄 Hôtels Duffel</button>
             <button class="btn ghost" id="refreshBookingBtn">🔄 Hôtels Booking.com</button>
-            <button class="btn ghost" id="refreshAmadeusBtn">🔄 Hôtels Amadeus</button>
             <button class="btn ghost" id="addStayBtn">+ Ajouter un hébergement</button>
           </div>
         </div>
@@ -520,7 +518,7 @@ input,select,textarea{font-family:inherit;}
           <select id="filterDest"></select>
           <select id="filterSource">
             <option value="">Toutes les plateformes</option>
-            <option>Booking</option><option>Airbnb</option><option>Agoda</option><option>Hotels</option><option>Google</option><option>Amadeus</option>
+            <option>Booking</option><option>Airbnb</option><option>Agoda</option><option>Hotels</option><option>Google</option>
           </select>
           <select id="filterSort">
             <option value="price">Trier : prix croissant</option>
@@ -2177,7 +2175,7 @@ function bookingSearchUrl(stay){
       return `https://www.google.com/search?q=${q}`;
   }
 }
-const STAY_PLACEHOLDER_EMOJI = { Booking:'🏨', 'Booking.com':'🏨', Airbnb:'🏠', Agoda:'🛏️', Hotels:'🛎️', Google:'🏨', 'Duffel Stays':'🏨', Amadeus:'🏨' };
+const STAY_PLACEHOLDER_EMOJI = { Booking:'🏨', 'Booking.com':'🏨', Airbnb:'🏠', Agoda:'🛏️', Hotels:'🛎️', Google:'🏨', 'Duffel Stays':'🏨' };
 function stayCardHTML(s, deletable){
   const url = bookingSearchUrl(s);
   const detailsLabel = (s.source==='Google' && s.url) ? 'Plus de détails →' : 'Voir avec ces dates →';
@@ -2454,36 +2452,6 @@ document.getElementById('refreshBookingBtn').addEventListener('click', async ()=
   if(state.destinations.length===0){ showToast('Ajoute d\'abord une destination.'); return; }
   if(!state.settings.proxyUrl){ openSettingsModal(); return; }
   for(const dest of state.destinations){ await fetchBookingHotels(dest); }
-});
-
-/* Amadeus for Developers — inscription libre (developers.amadeus.com), pas de
-   partenariat à négocier comme Booking.com/Agoda. Environnement de test par
-   défaut : quota limité et offres parfois absentes pour certains hôtels. */
-async function fetchAmadeusHotels(dest){
-  if(!state.settings.proxyUrl){ showToast('Configure d\'abord un serveur relais dans ⚙ Paramètres'); return; }
-  if(dest.lat==null || dest.lon==null){ showToast('Coordonnées manquantes pour cette destination — re-sélectionne-la via la recherche de ville.'); return; }
-  showToast('Recherche Amadeus pour ' + dest.name + '…');
-  try{
-    const data = await callProxy(`/api/amadeus-hotels?lat=${dest.lat}&lon=${dest.lon}&checkin=${dest.start}&checkout=${dest.end}`);
-    const fresh = (data.results || []).map((h,i)=> ({
-      id: dest.id+'-amadeus-'+i+'-'+Date.now(),
-      destId: dest.id, name: h.name, source: 'Amadeus', price: Math.round(parseFloat(h.price)||0), rating: h.rating||'—', real: true,
-    }));
-    if(!fresh.length){ showErrorModal('Aucun résultat Amadeus', `Aucun hôtel Amadeus trouvé pour ${dest.name} (fréquent en environnement de test — quota/offres limités).`); return; }
-    state.stays = state.stays.filter(s=> !(s.destId===dest.id && s.source==='Amadeus' && s.real));
-    state.stays.push(...fresh);
-    renderAll();
-    autosave();
-    showToast(`${fresh.length} hébergement(s) Amadeus ajouté(s) pour ${dest.name} ✓`);
-  }catch(err){
-    console.error(err);
-    showErrorModal('Amadeus indisponible', (err.message||'Erreur inconnue') + ' — vérifie AMADEUS_CLIENT_ID / AMADEUS_CLIENT_SECRET côté serveur relais.');
-  }
-}
-document.getElementById('refreshAmadeusBtn').addEventListener('click', async ()=>{
-  if(state.destinations.length===0){ showToast('Ajoute d\'abord une destination.'); return; }
-  if(!state.settings.proxyUrl){ openSettingsModal(); return; }
-  for(const dest of state.destinations){ await fetchAmadeusHotels(dest); }
 });
 
 /* Compteur discret de quota SerpApi (plan gratuit limité en recherches/mois) —
