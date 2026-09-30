@@ -57,6 +57,7 @@ bookingRouter.get('/api/booking-hotels', async (req, res) => {
       rating: h.review_score || '—',
       source: 'Booking.com',
       real: true,
+      image: h.photos?.[0]?.url_max300 || h.photos?.[0]?.url_original || h.main_photo_url || null,
     }));
     res.json({ results, environment: BOOKING_ENV });
   } catch (err) {
