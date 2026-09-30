@@ -186,6 +186,24 @@ input,select,textarea{font-family:inherit;}
 .day-row .dr-chip .remove{background:none;border:none;color:#a04b3f;font-size:13px;line-height:1;padding:0 1px;cursor:pointer;}
 .day-row .dr-empty{font-size:11.6px;color:#9aa6a1;font-style:italic;}
 
+/* Emploi du temps des activités (onglet Activités & achats) : les idées du
+   catalogue se glissent sur un créneau matin/après-midi/soir d'un jour précis. */
+.act-idea-row{cursor:grab;}
+.act-idea-row.dragging{opacity:.4;}
+.act-scheduled-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;background:var(--amber-soft);border:1px solid #e6cd9b;border-radius:8px;padding:2px 6px;white-space:nowrap;}
+.act-scheduled-badge .remove{background:none;border:none;color:#a04b3f;font-size:12px;line-height:1;padding:0;cursor:pointer;}
+.act-schedule{display:flex;flex-direction:column;gap:8px;}
+.act-day-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+.act-day-date{font-size:12px;font-weight:600;min-width:78px;flex-shrink:0;padding-top:8px;}
+.act-slots{flex:1;display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:8px;min-width:280px;}
+.act-slot{background:var(--paper);border:1px dashed var(--line);border-radius:8px;padding:6px 8px;min-height:52px;transition:background .15s,border-color .15s;}
+.act-slot.dragover{background:var(--amber-soft);border-color:var(--amber);}
+.act-slot-label{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;margin-bottom:4px;}
+.act-slot-empty{font-size:11px;color:#9aa6a1;font-style:italic;}
+.act-chip{display:flex;justify-content:space-between;align-items:center;gap:6px;background:#f0ede4;border:1px solid var(--line);border-radius:6px;padding:4px 7px;font-size:11.6px;margin-bottom:4px;cursor:grab;}
+.act-chip .remove{background:none;border:none;color:#a04b3f;font-size:12px;line-height:1;padding:0;cursor:pointer;flex-shrink:0;}
+@media (max-width:640px){ .act-slots{grid-template-columns:1fr;} }
+
 .stay-pool{position:sticky;top:0;}
 .stay-pool h3{font-size:14px;margin-bottom:4px;}
 .stay-pool p.hint{font-size:11.8px;color:var(--ink-soft);margin:0 0 12px 0;}
@@ -679,7 +697,7 @@ input,select,textarea{font-family:inherit;}
         <div class="section-head">
           <div>
             <h2>Activités &amp; achats</h2>
-            <p>Par destination et par thème — vêtements, matériel, parcs d'attraction, restaurants, change, ou tout autre besoin. Chacun ajoute ses idées, toute la famille les voit ; les liens ouvrent Maps/Google/TripAdvisor pour comparer sur place.</p>
+            <p>Par destination et par thème — vêtements, matériel, parcs d'attraction, restaurants, change, ou tout autre besoin. Chacun ajoute ses idées, toute la famille les voit ; les liens ouvrent Maps/Google/TripAdvisor pour comparer sur place. Glisse ensuite une idée du catalogue sur un créneau (matin/après-midi/soir) d'un jour précis pour construire l'emploi du temps du séjour.</p>
           </div>
         </div>
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
@@ -5451,15 +5469,32 @@ function normalizeActivityUrl(raw){
 
 let lastActivityAddedBy = '';
 
+const ACTIVITY_SLOTS = [
+  {key:'matin', label:'🌅 Matin'},
+  {key:'apresmidi', label:'☀️ Après-midi'},
+  {key:'soir', label:'🌙 Soir'},
+];
+
+function scheduleBadgeHTML(idea){
+  if(!idea.dayId || !idea.slot) return '';
+  const day = state.days.find(d=>d.id===idea.dayId);
+  const slot = ACTIVITY_SLOTS.find(s=>s.key===idea.slot);
+  if(!day || !slot) return '';
+  return `<span class="act-scheduled-badge">📅 ${fmtDate(day.date)} · ${slot.label} <button class="remove" data-unschedule="${idea.id}" title="Retirer du planning">✕</button></span>`;
+}
+
 function renderActivities(){
   const wrap = document.getElementById('activitiesWrap');
   if(!wrap) return;
   if(!state.activities) state.activities = [];
   if(!state.destinations.length){ wrap.innerHTML = '<p class="dash-empty">Ajoute une destination pour organiser les activités et achats.</p>'; return; }
 
-  wrap.innerHTML = state.destinations.map(d => `
+  wrap.innerHTML = state.destinations.map(d => {
+    const destDays = state.days.filter(day=>day.destId===d.id).sort((a,b)=> a.date.localeCompare(b.date));
+    return `
     <div class="dash-card dash-wide" style="margin-bottom:16px;">
       <div class="dc-head"><h3>🧭 ${d.name}, ${d.country}</h3></div>
+      <div style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;margin-bottom:8px;">📋 Catalogue d'idées</div>
       ${ACTIVITY_THEMES.map(theme => {
         const ideas = state.activities.filter(a=>a.destId===d.id && a.theme===theme.key);
         return `
@@ -5470,14 +5505,15 @@ function renderActivities(){
             </div>
             <div class="dash-list">
               ${ideas.length ? ideas.map(idea=>`
-                <div class="dash-row" data-act-id="${idea.id}" style="flex-direction:column;align-items:stretch;gap:3px;">
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;">
+                <div class="dash-row act-idea-row" data-act-id="${idea.id}" draggable="true" data-actchip="${idea.id}" style="flex-direction:column;align-items:stretch;gap:3px;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;min-width:140px;">
                       <input type="checkbox" class="act-done-cb" ${idea.done?'checked':''}>
                       <span style="${idea.done?'text-decoration:line-through;color:var(--ink-soft);':''}">${idea.text}${idea.addedBy ? ' <span style="color:var(--ink-soft);font-size:11px;">— '+idea.addedBy+'</span>' : ''}</span>
                     </label>
                     ${idea.link ? `<a href="${idea.link}" target="_blank" rel="noopener noreferrer" title="${idea.link}" style="margin-right:6px;color:var(--teal-dark);">🔗</a>` : ''}
                     ${typeof idea.price === 'number' ? `<b style="font-size:12.5px;white-space:nowrap;margin-right:6px;">≈ ${idea.price.toLocaleString('fr-FR')} €</b>` : ''}
+                    ${scheduleBadgeHTML(idea)}
                     <button class="link-btn act-del-btn" title="Supprimer">✕</button>
                   </div>
                   ${idea.note ? `<p class="forecast-note" style="margin:0 0 0 26px;">${idea.note}</p>` : ''}
@@ -5496,8 +5532,29 @@ function renderActivities(){
           </div>
         `;
       }).join('')}
+      ${destDays.length ? `
+        <div style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;margin:14px 0 8px;">🗓️ Emploi du temps — glisse une idée du catalogue sur un créneau</div>
+        <div class="act-schedule">
+          ${destDays.map(day=>`
+            <div class="act-day-row">
+              <div class="act-day-date">${fmtDate(day.date)}</div>
+              <div class="act-slots">
+                ${ACTIVITY_SLOTS.map(slot=>{
+                  const items = state.activities.filter(a=>a.dayId===day.id && a.slot===slot.key);
+                  return `
+                    <div class="act-slot" data-slotdrop="${day.id}|${slot.key}">
+                      <div class="act-slot-label">${slot.label}</div>
+                      ${items.map(a=>`<div class="act-chip" draggable="true" data-actchip="${a.id}">${a.text}<button class="remove" data-unschedule="${a.id}" title="Retirer du planning">✕</button></div>`).join('') || '<div class="act-slot-empty">Dépose ici</div>'}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
     </div>
-  `).join('');
+  `;}).join('');
 
   wrap.querySelectorAll('.act-add-form').forEach(form => form.addEventListener('submit', e=>{
     e.preventDefault();
@@ -5514,7 +5571,7 @@ function renderActivities(){
     const note = noteInput.value.trim() || null;
     const addedBy = byInput.value.trim() || null;
     lastActivityAddedBy = addedBy || '';
-    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, price, link, note, addedBy, done:false });
+    state.activities.push({ id:'act-'+Date.now()+Math.floor(Math.random()*1000), destId:form.dataset.dest, theme:form.dataset.theme, text, price, link, note, addedBy, done:false, dayId:null, slot:null });
     autosave();
     renderActivities();
   }));
@@ -5529,6 +5586,36 @@ function renderActivities(){
       state.activities = state.activities.filter(a=>a.id!==id);
       autosave();
       renderActivities();
+    });
+  });
+
+  wrap.querySelectorAll('[data-actchip]').forEach(chip=>{
+    chip.addEventListener('dragstart', e=>{
+      e.dataTransfer.setData('text/plain', chip.dataset.actchip);
+      chip.classList.add('dragging');
+    });
+    chip.addEventListener('dragend', ()=> chip.classList.remove('dragging'));
+  });
+  wrap.querySelectorAll('[data-unschedule]').forEach(btn=> btn.addEventListener('click', e=>{
+    e.stopPropagation();
+    const idea = state.activities.find(a=>a.id===btn.dataset.unschedule);
+    if(idea){ idea.dayId = null; idea.slot = null; autosave(); renderActivities(); }
+  }));
+  wrap.querySelectorAll('[data-slotdrop]').forEach(slotEl=>{
+    slotEl.addEventListener('dragover', e=>{ e.preventDefault(); slotEl.classList.add('dragover'); });
+    slotEl.addEventListener('dragleave', ()=> slotEl.classList.remove('dragover'));
+    slotEl.addEventListener('drop', e=>{
+      e.preventDefault();
+      slotEl.classList.remove('dragover');
+      const actId = e.dataTransfer.getData('text/plain');
+      const idea = state.activities.find(a=>a.id===actId);
+      if(!idea) return;
+      const [dayId, slotKey] = slotEl.dataset.slotdrop.split('|');
+      idea.dayId = dayId;
+      idea.slot = slotKey;
+      autosave();
+      renderActivities();
+      showToast('Activité planifiée ✓');
     });
   });
 }
