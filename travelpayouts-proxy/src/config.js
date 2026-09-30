@@ -24,8 +24,6 @@ export const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export const SERPAPI_KEY = process.env.SERPAPI_KEY;
 
-export const KIWI_API_KEY = process.env.KIWI_API_KEY;
-
 export const AMADEUS_CLIENT_ID = process.env.AMADEUS_CLIENT_ID;
 export const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
 export const AMADEUS_BASE_URL = process.env.AMADEUS_ENV === 'production'
@@ -60,9 +58,6 @@ export function warnMissingConfig() {
   }
   if (!SERPAPI_KEY) {
     console.warn('⚠️  SERPAPI_KEY manquant dans .env — /api/google-hotels échouera.');
-  }
-  if (!KIWI_API_KEY) {
-    console.warn('⚠️  KIWI_API_KEY manquant dans .env — /api/kiwi-flights échouera.');
   }
   if (!AMADEUS_CLIENT_ID || !AMADEUS_CLIENT_SECRET) {
     console.warn('⚠️  AMADEUS_CLIENT_ID / AMADEUS_CLIENT_SECRET manquants dans .env — /api/amadeus-hotels échouera.');

@@ -1800,31 +1800,6 @@ async function fetchDuffelFlight(dest){
   }
 }
 
-/* Kiwi.com (Tequila API) — 3e source de prix de vols réels, inscription libre
-   sur partners.kiwi.com (pas de partenariat à négocier comme Booking/Agoda). */
-async function fetchKiwiFlight(dest){
-  if(!state.settings.proxyUrl){ showToast('Configure d\'abord un serveur relais dans ⚙ Paramètres'); return; }
-  if(!state.settings.originIata){ showToast('Renseigne ton aéroport de départ dans ⚙ Paramètres'); return; }
-  if(!dest.iata){ showToast('Ajoute un code IATA à cette destination pour chercher un vol.'); return; }
-  showToast('Recherche Kiwi.com vers ' + dest.name + '…');
-  try{
-    const data = await callProxy(`/api/kiwi-flights?origin=${state.settings.originIata}&destination=${dest.iata}&date=${dest.start}`);
-    const best = (data.results || [])[0];
-    if(!best){ showErrorModal('Aucun vol Kiwi.com trouvé', `Aucune offre pour ${state.settings.originIata} → ${dest.iata} le ${dest.start}.`); return; }
-    askPassengerCountForPrice(`${best.price}€`, (nbPax)=>{
-      dest.realFlightPrice = Math.round((parseFloat(best.price)/nbPax)*100)/100;
-      dest.realFlightAirline = best.airline || 'Kiwi.com';
-      dest.realFlightSource = 'Kiwi.com';
-      renderDestRow();
-      autosave();
-      showToast(`Vol enregistré : ${dest.realFlightPrice}€ / personne ✓`);
-    });
-  }catch(err){
-    console.error(err);
-    showErrorModal('Récupération Kiwi.com impossible', err.message || 'Erreur inconnue — vérifie que KIWI_API_KEY est bien configuré côté serveur relais.');
-  }
-}
-
 document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
 document.getElementById('resetBtn').addEventListener('click', ()=>{
   if(confirm('Repartir d\'un dossier vierge ? Pensez à créer une sauvegarde avant si vous voulez garder le dossier actuel.')){
@@ -1987,7 +1962,7 @@ function renderDestRow(){
         ${d.stopover ? `<span class="wx-badge badge-med" style="font-size:10px;" title="Escale déclarée par toi à l'ajout de cette étape">✈️ via ${d.stopover}</span>` : ''}
       </div>
       ${transportChipsHTML(d.transportModes)}
-      ${d.realFlightPrice ? `<div class="transport" style="color:var(--teal-dark);font-weight:600;margin-top:4px;">${d.realFlightPrice}€/pers. réel · ${d.realFlightAirline} <span style="font-weight:400;color:var(--ink-soft);font-size:10px;">(${d.realFlightSource||'?'})</span> <button class="link-btn" style="font-size:10px;" data-editflightprice="${d.id}">modifier</button></div>` : ((d.transportModes||[]).includes('Avion') ? `<div style="display:flex;gap:8px;margin-top:6px;"><button class="link-btn" style="font-size:11px;" data-findflight="${d.id}">Vol réel (Travelpayouts) →</button><button class="link-btn" style="font-size:11px;" data-findflightduffel="${d.id}">Vol Duffel →</button><button class="link-btn" style="font-size:11px;" data-findflightkiwi="${d.id}">Vol Kiwi.com →</button></div>` : '')}
+      ${d.realFlightPrice ? `<div class="transport" style="color:var(--teal-dark);font-weight:600;margin-top:4px;">${d.realFlightPrice}€/pers. réel · ${d.realFlightAirline} <span style="font-weight:400;color:var(--ink-soft);font-size:10px;">(${d.realFlightSource||'?'})</span> <button class="link-btn" style="font-size:10px;" data-editflightprice="${d.id}">modifier</button></div>` : ((d.transportModes||[]).includes('Avion') ? `<div style="display:flex;gap:8px;margin-top:6px;"><button class="link-btn" style="font-size:11px;" data-findflight="${d.id}">Vol réel (Travelpayouts) →</button><button class="link-btn" style="font-size:11px;" data-findflightduffel="${d.id}">Vol Duffel →</button></div>` : '')}
     </div>
   `;}).join('') || '<p class="dash-empty">Aucune destination pour l\'instant — ajoutez-en une pour commencer.</p>';
   el.querySelectorAll('[data-deldest]').forEach(btn=> btn.addEventListener('click', e=>{
@@ -2001,10 +1976,6 @@ function renderDestRow(){
   el.querySelectorAll('[data-findflightduffel]').forEach(btn=> btn.addEventListener('click', ()=>{
     const dest = state.destinations.find(x=>x.id===btn.dataset.findflightduffel);
     if(dest) fetchDuffelFlight(dest);
-  }));
-  el.querySelectorAll('[data-findflightkiwi]').forEach(btn=> btn.addEventListener('click', ()=>{
-    const dest = state.destinations.find(x=>x.id===btn.dataset.findflightkiwi);
-    if(dest) fetchKiwiFlight(dest);
   }));
   el.querySelectorAll('[data-editflightprice]').forEach(btn=> btn.addEventListener('click', e=>{
     e.stopPropagation();

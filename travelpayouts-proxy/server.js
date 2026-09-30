@@ -29,7 +29,6 @@ import { bookingRouter } from './src/routes/booking.js';
 import { backupRouter } from './src/routes/backup.js';
 import { aiRouter } from './src/routes/ai.js';
 import { googleHotelsRouter } from './src/routes/googleHotels.js';
-import { kiwiRouter } from './src/routes/kiwi.js';
 import { amadeusRouter } from './src/routes/amadeus.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -56,7 +55,6 @@ app.use(bookingRouter);
 app.use(backupRouter);
 app.use(aiRouter);
 app.use(googleHotelsRouter);
-app.use(kiwiRouter);
 app.use(amadeusRouter);
 
 app.listen(PORT, () => {
