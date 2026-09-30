@@ -96,6 +96,7 @@ duffelRouter.get('/api/duffel-hotels', async (req, res) => {
       rating: r.accommodation?.rating || '—',
       source: 'Duffel Stays',
       real: true,
+      image: r.accommodation?.photos?.[0]?.url || null,
     }));
     res.json({ results });
   } catch (err) {

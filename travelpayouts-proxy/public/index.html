@@ -195,6 +195,7 @@ input,select,textarea{font-family:inherit;}
 }
 .stay-card:active{cursor:grabbing;}
 .stay-photo{width:calc(100% + 24px);margin:-10px -12px 8px -12px;display:block;height:110px;object-fit:cover;border-radius:9px 9px 0 0;}
+.stay-photo-placeholder{width:calc(100% + 24px);margin:-10px -12px 8px -12px;height:110px;border-radius:9px 9px 0 0;background:linear-gradient(135deg,var(--paper),var(--line));display:flex;align-items:center;justify-content:center;font-size:34px;}
 .stay-card .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
 .stay-card .stay-name{font-weight:600;font-size:13px;}
 .stay-card .source{font-size:9.5px;font-weight:700;letter-spacing:.03em;padding:2px 6px;border-radius:5px;color:#fff;flex-shrink:0;}
@@ -456,7 +457,6 @@ input,select,textarea{font-family:inherit;}
 
         <div class="dest-row" id="destRow"></div>
 
-        <div id="legsWrap" style="margin-top:18px;"></div>
       </div>
 
       <!-- BILLETS D'AVION -->
@@ -1704,14 +1704,6 @@ function showErrorModal(title, message){
    définitivement le 20 octobre 2025, confirmé par Travelpayouts eux-mêmes.
    Utilise fetchDuffelHotels, fetchBookingHotels, ou l'ajout manuel. */
 
-async function fetchFlightPrice(originIata, destIata){
-  if(!state.settings.proxyUrl || !originIata || !destIata) return null;
-  const res = await fetch(`${state.settings.proxyUrl}/api/flights?origin=${originIata}&destination=${destIata}`);
-  const data = await res.json();
-  if(!res.ok || data.error) return null;
-  return (data.results || [])[0] || null;
-}
-
 /* Demande combien de personnes couvre le prix trouvé, pour toujours stocker un
    prix PAR PERSONNE dans realFlightPrice — sinon un prix "pour 4" appliqué tel
    quel à chaque voyageur fausse complètement le Budget (x4 le vrai coût). */
@@ -1786,85 +1778,6 @@ async function fetchDuffelFlight(dest){
     console.error(err);
     showErrorModal('Récupération Duffel impossible', err.message || 'Erreur inconnue — vérifie que DUFFEL_API_KEY est bien configuré côté serveur relais.');
   }
-}
-
-/* ---------------- comparaison des trajets entre étapes ---------------- */
-function renderLegs(){
-  const wrap = document.getElementById('legsWrap');
-  if(!wrap) return;
-  const dests = [...state.destinations].sort((a,b)=> a.start.localeCompare(b.start));
-  if(!dests.length){ wrap.innerHTML = ''; return; }
-
-  // Construit la liste des étapes : domicile → 1ère destination (si connu),
-  // puis chaque étape interne — pour pouvoir chercher un vol RUN→BKK et
-  // BKK→CNX séparément, plutôt qu'un seul trajet global irréaliste.
-  const legs = [];
-  if(state.settings.originIata){
-    legs.push({ prev: { name:'Chez toi', iata: state.settings.originIata }, dest: dests[0] });
-  }
-  for(let i=1;i<dests.length;i++){ legs.push({ prev: dests[i-1], dest: dests[i] }); }
-  if(!legs.length){ wrap.innerHTML = ''; return; }
-
-  wrap.innerHTML = `<h3 style="font-size:14px;margin-bottom:10px;">Comparer les trajets entre étapes</h3>` + legs.map(({prev, dest})=>{
-    const d = dest;
-    const modes = d.transportModes || [];
-    const dateStr = d.start;
-    const gflightsUrl = `https://www.google.com/travel/flights?q=${encodeURIComponent(`Flights from ${prev.name} to ${d.name} on ${dateStr}`)}`;
-    return `
-      <div class="dash-card" style="margin-bottom:12px;">
-        <div class="dc-head"><h3>${prev.name} → ${d.name}</h3><span class="dc-sub">${fmtDate(dateStr)} · ${modes.join(' + ') || 'transport à définir'}</span></div>
-        <div id="leg-flight-${d.id}" class="dc-sub" style="margin-bottom:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-          ${modes.includes('Avion') ? `
-            <button class="link-btn" data-legflight="${prev.iata||''}|${d.iata||''}|${d.id}">Vol réel (Travelpayouts) →</button>
-            <button class="link-btn" data-legflightduffel="${prev.iata||''}|${d.iata||''}|${d.id}|${d.start}">Vol réel (Duffel) →</button>
-            <button class="link-btn" data-legflightgoogle="${prev.iata||''}|${d.iata||''}|${d.id}|${d.start}">Vol réel (Google) →</button>
-          ` : ''}
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;">
-          <a href="${gflightsUrl}" target="_blank" rel="noopener" style="color:var(--teal-dark);">Comparer sur Google Flights →</a>
-          ${modes.includes('Train') ? `<a href="https://www.thetrainline.com/" target="_blank" rel="noopener" style="color:var(--teal-dark);">Train sur Trainline →</a><a href="https://www.omio.fr/" target="_blank" rel="noopener" style="color:var(--teal-dark);">ou Omio →</a>` : ''}
-          ${modes.includes('Ferry / Bateau') ? `<a href="https://www.directferries.fr/" target="_blank" rel="noopener" style="color:var(--teal-dark);">Ferry sur Direct Ferries →</a>` : ''}
-        </div>
-        <p class="forecast-note">Ces liens ouvrent une recherche réelle pour ${prev.name} → ${d.name} le ${fmtDate(dateStr)} — aucune API gratuite fiable n'existe pour afficher un tarif train/ferry en direct ici, mieux vaut comparer toi-même sur le site plutôt que d'avoir un chiffre invérifié.</p>
-      </div>
-    `;
-  }).join('');
-
-  wrap.querySelectorAll('[data-legflight]').forEach(btn=> btn.addEventListener('click', async ()=>{
-    const [originIata, destIata, destId] = btn.dataset.legflight.split('|');
-    if(!state.settings.proxyUrl){ showToast('Configure d\'abord un serveur relais dans ⚙ Paramètres'); return; }
-    if(!originIata || !destIata){ showToast('Code IATA manquant sur une des deux étapes.'); return; }
-    showToast('Recherche du vol réel…');
-    const best = await fetchFlightPrice(originIata, destIata).catch(()=>null);
-    const box = document.getElementById('leg-flight-'+destId);
-    if(!box) return;
-    box.insertAdjacentHTML('beforeend', `<b style="color:var(--teal-dark);">${best ? best.price+'€ réel (Travelpayouts) · '+best.airline : 'Aucun vol Travelpayouts trouvé.'}</b>`);
-  }));
-  wrap.querySelectorAll('[data-legflightduffel]').forEach(btn=> btn.addEventListener('click', async ()=>{
-    const [originIata, destIata, destId, date] = btn.dataset.legflightduffel.split('|');
-    if(!state.settings.proxyUrl){ showToast('Configure d\'abord un serveur relais dans ⚙ Paramètres'); return; }
-    if(!originIata || !destIata){ showToast('Code IATA manquant sur une des deux étapes.'); return; }
-    showToast('Recherche du vol Duffel…');
-    const best = await fetchDuffelFlightPrice(originIata, destIata, date).catch(()=>null);
-    const box = document.getElementById('leg-flight-'+destId);
-    if(!box) return;
-    box.insertAdjacentHTML('beforeend', `<b style="color:var(--teal-dark);">${best ? best.price+' '+best.currency+' réel (Duffel) · '+best.airline : 'Aucun vol Duffel trouvé.'}</b>`);
-  }));
-  wrap.querySelectorAll('[data-legflightgoogle]').forEach(btn=> btn.addEventListener('click', async ()=>{
-    const [originIata, destIata, destId, date] = btn.dataset.legflightgoogle.split('|');
-    if(!state.settings.proxyUrl){ showToast('Configure d\'abord un serveur relais dans ⚙ Paramètres'); return; }
-    if(!originIata || !destIata){ showToast('Code IATA manquant sur une des deux étapes.'); return; }
-    showToast('Recherche Google Flights (quota limité, à utiliser ponctuellement)…');
-    try{
-      const data = await callProxy(`/api/google-flights?origin=${originIata}&destination=${destIata}&date=${date}`);
-      const best = (data.results||[])[0];
-      const box = document.getElementById('leg-flight-'+destId);
-      if(box) box.insertAdjacentHTML('beforeend', `<b style="color:var(--teal-dark);">${best ? best.price+'€ réel (Google) · '+(best.airline||'?') : 'Aucun vol Google trouvé.'}</b>`);
-    }catch(err){
-      console.error(err);
-      showErrorModal('Google Flights indisponible', err.message || 'Erreur inconnue — vérifie SERPAPI_KEY côté serveur relais.');
-    }
-  }));
 }
 
 document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
@@ -2244,13 +2157,17 @@ function bookingSearchUrl(stay){
       return `https://www.google.com/search?q=${q}`;
   }
 }
+const STAY_PLACEHOLDER_EMOJI = { Booking:'🏨', 'Booking.com':'🏨', Airbnb:'🏠', Agoda:'🛏️', Hotels:'🛎️', Google:'🏨', 'Duffel Stays':'🏨' };
 function stayCardHTML(s, deletable){
   const url = bookingSearchUrl(s);
   const detailsLabel = (s.source==='Google' && s.url) ? 'Plus de détails →' : 'Voir avec ces dates →';
+  const photoHTML = s.image
+    ? `<img src="${s.image}" alt="" class="stay-photo" draggable="false">`
+    : `<div class="stay-photo-placeholder">${STAY_PLACEHOLDER_EMOJI[s.source] || '🏨'}</div>`;
   return `
     <div class="stay-card deletable" draggable="true" data-stay="${s.id}">
       ${deletable ? `<button class="del-x" data-delstay="${s.id}" title="Retirer cet hébergement">✕</button>` : ''}
-      ${s.image ? `<img src="${s.image}" alt="" class="stay-photo" draggable="false">` : ''}
+      ${photoHTML}
       <div class="row1">
         <div class="stay-name">${s.name}</div>
         <div class="source src-${s.source}">${s.source}</div>
@@ -2471,7 +2388,7 @@ async function fetchDuffelHotels(dest){
     const data = await callProxy(`/api/duffel-hotels?lat=${dest.lat}&lon=${dest.lon}&checkin=${dest.start}&checkout=${dest.end}`);
     const fresh = (data.results || []).map((h,i)=> ({
       id: dest.id+'-duffel-'+i+'-'+Date.now(),
-      destId: dest.id, name: h.name, source: 'Duffel Stays', price: Math.round(parseFloat(h.price)), rating: h.rating, real: true,
+      destId: dest.id, name: h.name, source: 'Duffel Stays', price: Math.round(parseFloat(h.price)), rating: h.rating, real: true, image: h.image || null,
     }));
     if(!fresh.length){ showErrorModal('Aucun résultat Duffel', `Aucun hôtel Duffel Stays trouvé pour ${dest.name}. Vérifie que l'accès Stays est bien activé sur ton compte Duffel (voir README du serveur relais).`); return; }
     state.stays = state.stays.filter(s=> !(s.destId===dest.id && s.source==='Duffel Stays'));
@@ -2500,7 +2417,7 @@ async function fetchBookingHotels(dest){
     const data = await callProxy(`/api/booking-hotels?lat=${dest.lat}&lon=${dest.lon}&checkin=${dest.start}&checkout=${dest.end}`);
     const fresh = (data.results || []).map((h,i)=> ({
       id: dest.id+'-booking-'+i+'-'+Date.now(),
-      destId: dest.id, name: h.name, source: 'Booking', price: Math.round(parseFloat(h.price)), rating: h.rating, real: true,
+      destId: dest.id, name: h.name, source: 'Booking', price: Math.round(parseFloat(h.price)), rating: h.rating, real: true, image: h.image || null,
     }));
     if(!fresh.length){ showErrorModal('Aucun résultat Booking.com', `Aucun hôtel trouvé pour ${dest.name}.`); return; }
     state.stays = state.stays.filter(s=> !(s.destId===dest.id && s.source==='Booking' && s.real));
@@ -5036,15 +4953,25 @@ function buildTripLegs(){
 
 function openAddTicketModal(existingTicket){
   const isEdit = !!existingTicket;
+  const legs = buildTripLegs();
+  const roundTripPair = legs.length>=2 ? { outbound: legs[0], ret: legs[legs.length-1] } : null;
   document.getElementById('modalBody').innerHTML = `
     <h3>${isEdit?'Modifier le billet':'Ajouter un billet / devis'}</h3>
     <div class="sub">Saisis un prix reçu d'une compagnie ou agence (ex. Air Austral) pour l'appliquer directement à un ou plusieurs voyageurs.</div>
+    ${!isEdit && roundTripPair ? `
+    <div class="field" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="tk-roundtrip" style="width:auto;">
+      <label for="tk-roundtrip" style="margin:0;">C'est un aller-retour (vol aller + retour vers ${roundTripPair.outbound.label.split(' → ')[0]}) ?</label>
+    </div>` : ''}
     <div class="field"><label>Compagnie / agence</label><input id="tk-airline" placeholder="Ex. Air Austral" value="${isEdit?(existingTicket.airline||''):''}"></div>
-    <div class="field"><label>Trajet</label>
+    <div class="field">
+      <label>Trajet</label>
       <select id="tk-route-select"></select>
-      <p class="forecast-note" style="margin-top:4px;">La liste reprend les étapes de ton itinéraire, avec le mode de transport choisi pour chacune (avion, bus, VTC…).</p>
+      <p class="forecast-note" id="tk-roundtrip-note" style="margin-top:4px;display:none;"></p>
+      <p class="forecast-note" id="tk-route-hint" style="margin-top:4px;">La liste reprend les étapes de ton itinéraire, avec le mode de transport choisi pour chacune (avion, bus, VTC…).</p>
     </div>
-    <div class="field"><label>Date de vol</label><input id="tk-date" type="date" value="${isEdit?(existingTicket.date||''):''}"></div>
+    <div class="field"><label id="tk-date-label">Date de vol</label><input id="tk-date" type="date" value="${isEdit?(existingTicket.date||''):''}"></div>
+    <div class="field" id="tk-date-return-field" style="display:none;"><label>Date de vol retour</label><input id="tk-date-return" type="date"></div>
     <div class="field"><label>Référence de réservation (facultatif)</label><input id="tk-ref" value="${isEdit?(existingTicket.bookingRef||''):''}"></div>
     <div class="field" style="display:flex;gap:10px;">
       <div style="flex:1;"><label>Prix adulte (€)</label><input id="tk-adult" type="number" min="0" value="${isEdit?(existingTicket.priceAdult||0):0}"></div>
@@ -5068,21 +4995,37 @@ function openAddTicketModal(existingTicket){
   document.getElementById('overlay').classList.add('show');
   document.getElementById('modalClose').addEventListener('click', closeModal);
 
-  const legs = buildTripLegs();
   const routeSel = document.getElementById('tk-route-select');
-  const airlineLabel = document.querySelector('label[for="tk-airline"]');
   routeSel.innerHTML = legs.length
     ? legs.map((l,i)=> `<option value="${l.label}" data-mode="${l.mode}" ${isEdit&&existingTicket.route===l.label?'selected':''}>${l.label} (${l.mode})</option>`).join('')
     : `<option value="${isEdit?(existingTicket.route||''):''}">Aucune étape trouvée — ajoute d'abord des destinations dans l'itinéraire</option>`;
+
+  const roundtripCb = document.getElementById('tk-roundtrip');
+  const roundtripNote = document.getElementById('tk-roundtrip-note');
+  const routeHint = document.getElementById('tk-route-hint');
+  const dateLabel = document.getElementById('tk-date-label');
+  const dateReturnField = document.getElementById('tk-date-return-field');
+
   function adaptFieldsToMode(){
-    const opt = routeSel.selectedOptions[0];
-    const mode = opt ? opt.dataset.mode : null;
+    const isRT = roundtripCb && roundtripCb.checked;
+    const mode = isRT ? roundTripPair.outbound.mode : (routeSel.selectedOptions[0]?.dataset.mode || null);
     const airlineInput = document.getElementById('tk-airline');
     if(!mode || mode==='Avion'){ airlineInput.placeholder = 'Ex. Air Austral'; }
     else { airlineInput.placeholder = `Ex. prestataire ${mode}`; }
   }
+  function applyRoundtripUI(){
+    const isRT = roundtripCb && roundtripCb.checked;
+    routeSel.style.display = isRT ? 'none' : '';
+    routeHint.style.display = isRT ? 'none' : '';
+    roundtripNote.style.display = isRT ? '' : 'none';
+    if(isRT) roundtripNote.textContent = `${roundTripPair.outbound.label.replace(' → ',' ↔ ')} (aller-retour)`;
+    dateLabel.textContent = isRT ? 'Date de vol aller' : 'Date de vol';
+    dateReturnField.style.display = isRT ? '' : 'none';
+    adaptFieldsToMode();
+  }
   routeSel.addEventListener('change', adaptFieldsToMode);
-  adaptFieldsToMode();
+  if(roundtripCb) roundtripCb.addEventListener('change', applyRoundtripUI);
+  applyRoundtripUI();
 
   const scopeSel = document.getElementById('tk-scope');
   const targetWrap = document.getElementById('tk-target-wrap');
@@ -5102,11 +5045,8 @@ function openAddTicketModal(existingTicket){
 
   document.getElementById('tk-save').addEventListener('click', ()=>{
     const scope = scopeSel.value;
-    const ticket = {
-      id: isEdit ? existingTicket.id : 'tk'+Date.now(),
+    const common = {
       airline: document.getElementById('tk-airline').value.trim(),
-      route: routeSel.value,
-      date: document.getElementById('tk-date').value,
       bookingRef: document.getElementById('tk-ref').value.trim(),
       priceAdult: parseFloat(document.getElementById('tk-adult').value)||0,
       priceChild: parseFloat(document.getElementById('tk-child').value)||0,
@@ -5114,6 +5054,24 @@ function openAddTicketModal(existingTicket){
       scope,
       targetId: scope==='group' ? document.getElementById('tk-target')?.value : null,
       targetIds: scope==='travelers' ? Array.from(document.querySelectorAll('.tk-target-cb:checked')).map(cb=>cb.value) : null,
+    };
+    if(roundtripCb && roundtripCb.checked){
+      const dateOut = document.getElementById('tk-date').value;
+      const dateRet = document.getElementById('tk-date-return').value;
+      if(!dateOut || !dateRet){ showToast('Renseigne les deux dates (aller et retour).'); return; }
+      state.flightTickets.push({ id:'tk'+Date.now()+'-out', route: roundTripPair.outbound.label, date: dateOut, ...common });
+      state.flightTickets.push({ id:'tk'+Date.now()+'-ret', route: roundTripPair.ret.label, date: dateRet, ...common });
+      closeModal();
+      renderAll();
+      autosave();
+      showToast('2 billets ajoutés (aller + retour) ✓');
+      return;
+    }
+    const ticket = {
+      id: isEdit ? existingTicket.id : 'tk'+Date.now(),
+      route: routeSel.value,
+      date: document.getElementById('tk-date').value,
+      ...common,
     };
     if(isEdit){
       const idx = state.flightTickets.findIndex(t=>t.id===existingTicket.id);
@@ -5673,7 +5631,6 @@ function renderAll(){
   renderHubReturnBanner();
   renderKidTimeline();
   renderDestRow();
-  renderLegs();
   renderItinerary();
   renderFullStayList();
   renderWeather();
