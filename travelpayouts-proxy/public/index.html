@@ -489,14 +489,14 @@ input,select,textarea{font-family:inherit;}
 
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
           <div class="dc-head"><h3>Recherche de vols — partenaire</h3></div>
-          <p class="forecast-note" style="margin-bottom:10px;">Boutons générés automatiquement d'après ton aéroport de départ et les destinations déjà planifiées dans l'itinéraire (avec leur code aéroport renseigné). Le trajet et les dates pré-remplis restent modifiables directement dans le moteur de recherche ci-dessous si tu veux comparer un autre vol.</p>
+          <p class="forecast-note" style="margin-bottom:10px;">Trajets générés d'après ton itinéraire — modifiables directement dans le moteur ci-dessous.</p>
           <div id="flightWidgetButtons" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
           <div id="flightWidgetWrap" style="min-height:60px;"></div>
         </div>
 
         <div class="dash-card dash-wide">
           <div class="dc-head"><h3>Billets enregistrés</h3></div>
-          <p class="forecast-note" style="margin-bottom:10px;">💡 Ajoute ton billet retour (trajet se terminant par "(retour)") avec sa date exacte — l'onglet Hébergements prolongera alors automatiquement le séjour sur ta dernière étape jusqu'à ce jour-là.</p>
+          <p class="forecast-note" style="margin-bottom:10px;">💡 Le billet retour prolonge automatiquement le séjour (onglet Hébergements).</p>
           <div id="ticketsList" class="dash-list"></div>
         </div>
       </div>
@@ -506,7 +506,7 @@ input,select,textarea{font-family:inherit;}
         <div class="section-head">
           <div>
             <h2>Comparateur d'hébergements</h2>
-            <p id="hebergementsModeNote">Cartes "Démo" = données simulées. Cartes "Données réelles" = récupérées via Duffel ou Booking.com (Travelpayouts/Hotellook a fermé le 20/10/2025).</p>
+            <p id="hebergementsModeNote">"Démo" = simulé. "Données réelles" = Duffel ou Booking.com.</p>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn ghost" id="refreshDuffelBtn">🔄 Hôtels Duffel</button>
@@ -542,12 +542,12 @@ input,select,textarea{font-family:inherit;}
         <div class="section-head">
           <div>
             <h2>Météo</h2>
-            <p>Météo réelle (Open-Meteo, gratuit, sans clé) pour les dates précises de chaque étape de ton voyage — prévision en direct si le départ est proche, sinon moyenne calculée sur les 5 dernières années pour ces mêmes dates.</p>
+            <p>Prévision réelle si le départ est proche, sinon moyenne sur 5 ans.</p>
           </div>
           <button class="btn ghost small" id="refreshWeatherBtn">🔄 Actualiser la météo</button>
         </div>
         <div class="wx-grid" id="wxGrid"></div>
-        <p class="forecast-note">Pour vérifier de ton côté : <a href="#" id="wxGoogleLink" target="_blank" style="color:var(--teal-dark);">recherche Google</a>. Les données viennent d'Open-Meteo (open-meteo.com), un service météo européen gratuit et sans publicité — mais pour un mariage ou un événement important, recroise toujours avec une source locale proche de la date.</p>
+        <p class="forecast-note">Source : Open-Meteo — <a href="#" id="wxGoogleLink" target="_blank" style="color:var(--teal-dark);">vérifier sur Google</a>.</p>
       </div>
 
       <!-- VOYAGEURS -->
@@ -639,7 +639,7 @@ input,select,textarea{font-family:inherit;}
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;"><input type="checkbox" id="bud-cat-billets" checked> 🎫 Billets enregistrés</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;"><input type="checkbox" id="bud-cat-extra" checked> ➕ Frais additionnels</label>
           </div>
-          <p class="forecast-note" style="margin-top:8px;">Hébergements et vols sont répartis à parts égales entre tous les voyageurs par défaut (on ne sait pas qui a dormi où) — ajoute des frais additionnels ci-dessous pour corriger au cas par cas (ex. supplément chambre individuelle).</p>
+          <p class="forecast-note" style="margin-top:8px;">Répartis à parts égales par défaut — ajoute un frais additionnel pour corriger au cas par cas.</p>
           <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">
             <div>
               <label style="font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;">Plafond par personne (€, facultatif)</label>
@@ -695,7 +695,7 @@ input,select,textarea{font-family:inherit;}
         <div class="section-head">
           <div>
             <h2>Activités &amp; achats</h2>
-            <p>Par destination et par thème — vêtements, matériel, parcs d'attraction, restaurants, change, ou tout autre besoin. Chacun ajoute ses idées, toute la famille les voit ; les liens ouvrent Maps/Google/TripAdvisor pour comparer sur place. Glisse ensuite une idée du catalogue sur un créneau (matin/après-midi/soir) d'un jour précis pour construire l'emploi du temps du séjour.</p>
+            <p>Ajoute des idées par ville, puis glisse-les sur un créneau pour construire l'emploi du temps.</p>
           </div>
         </div>
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
@@ -714,7 +714,7 @@ input,select,textarea{font-family:inherit;}
         <div class="section-head">
           <div>
             <h2>Conseils &amp; juridique</h2>
-            <p>Par destination — vaccins, pharmacie, lois locales, argent, bons plans. Généré par IA + recherche web, vérifié nulle part ailleurs que sur internet au moment de la génération.</p>
+            <p>Vaccins, lois locales, bons plans — généré par IA, à vérifier avant de partir.</p>
           </div>
         </div>
         <div class="dash-card dash-wide" style="margin-bottom:16px;">
@@ -2364,8 +2364,8 @@ function openDayStayPickerModal(dayId){
 function renderFullStayList(){
   const noteEl = document.getElementById('hebergementsModeNote');
   if(noteEl) noteEl.textContent = state.settings.realDataOnly
-    ? 'Mode "prix réels uniquement" activé — aucune donnée simulée ne s\'affiche. Utilise "🔄 Hôtels Duffel", "🔄 Hôtels Booking.com", ou ajoute un hébergement manuellement.'
-    : 'Cartes "Démo" = données simulées. Cartes "Données réelles" = récupérées via Duffel ou Booking.com (Travelpayouts/Hotellook a fermé le 20/10/2025).';
+    ? 'Prix réels uniquement — cherche avec Duffel/Booking ou ajoute manuellement.'
+    : '"Démo" = simulé. "Données réelles" = Duffel ou Booking.com.';
   const destSel = document.getElementById('filterDest');
   destSel.innerHTML = '<option value="">Toutes les destinations</option>' + state.destinations.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
   const googleDestSel = document.getElementById('googleHotelsDestSelect');
