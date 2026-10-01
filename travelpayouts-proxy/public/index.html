@@ -118,6 +118,27 @@ input,select,textarea{font-family:inherit;}
 .del-x:hover{background:#f4dede;color:var(--coral);}
 
 /* ---------- Dashboard ---------- */
+.hero-banner{
+  background: linear-gradient(135deg, var(--teal-dark) 0%, var(--sky) 55%, var(--sunset) 100%);
+  color:#fff; border-radius:16px; padding:26px 28px; margin-bottom:20px; box-shadow:var(--shadow);
+  position:relative; overflow:hidden;
+}
+.hero-banner::before{
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(circle at 85% 20%, rgba(255,255,255,.18), transparent 55%);
+  pointer-events:none;
+}
+.hero-banner .hb-greeting{font-size:13px;font-weight:600;opacity:.85;letter-spacing:.02em;text-transform:uppercase;}
+.hero-banner .hb-title{font-family:'Fraunces',serif;font-size:clamp(22px,4vw,32px);font-weight:600;margin:4px 0 6px;line-height:1.15;}
+.hero-banner .hb-sub{font-size:13.5px;opacity:.92;max-width:520px;}
+.hero-banner .hb-badge{
+  display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.18);backdrop-filter:blur(2px);
+  border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;margin-top:14px;
+}
+.hero-banner .hb-cta{margin-top:16px;display:inline-flex;}
+.hero-banner .hb-cta .btn{background:#fff;color:var(--teal-dark);font-weight:700;}
+.hero-banner .hb-cta .btn:hover{background:var(--amber-soft);}
+@media (max-width:640px){ .hero-banner{padding:20px;} }
 .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:8px;}
 .dash-card{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;}
 .dash-card .dc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
@@ -444,6 +465,7 @@ input,select,textarea{font-family:inherit;}
 
       <!-- DASHBOARD -->
       <div class="view active" id="view-dashboard">
+        <div id="dashHero"></div>
         <div class="section-head">
           <div>
             <h2>Tableau de bord</h2>
@@ -4495,7 +4517,42 @@ function renderShareQrCode(){
   el.innerHTML = `<img src="${url}" alt="QR code du voyage" width="140" height="140" style="border-radius:8px;">`;
 }
 
+function renderDashHero(){
+  const el = document.getElementById('dashHero');
+  if(!el) return;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+  const title = state.tripTitle || 'Mon voyage';
+  const range = tripDateRange();
+  let badge = '';
+  if(range){
+    const today = new Date(); today.setHours(0,0,0,0);
+    const start = new Date(range.start);
+    const end = new Date(range.end);
+    const daysTo = Math.round((start-today)/86400000);
+    if(today < start) badge = `✈️ Départ dans ${daysTo} jour${daysTo>1?'s':''}`;
+    else if(today <= end){
+      const dayNum = Math.round((today-start)/86400000)+1;
+      const totalDays = Math.round((end-start)/86400000)+1;
+      badge = `🌴 En voyage — jour ${dayNum} sur ${totalDays}`;
+    } else {
+      badge = `✓ Voyage terminé`;
+    }
+  }
+  el.innerHTML = `
+    <div class="hero-banner">
+      <div class="hb-greeting">${greeting} !</div>
+      <div class="hb-title">${title}</div>
+      <div class="hb-sub">${state.destinations.length} destination${state.destinations.length>1?'s':''} · ${state.travelers.length} voyageur${state.travelers.length>1?'s':''}</div>
+      ${badge ? `<div class="hb-badge">${badge}</div>` : ''}
+      <div class="hb-cta"><button class="btn" id="heroGotoItin">Voir l'itinéraire →</button></div>
+    </div>
+  `;
+  document.getElementById('heroGotoItin').addEventListener('click', ()=> switchView('itineraire'));
+}
+
 function renderDashboard(){
+  renderDashHero();
   const grid = document.getElementById('dashGrid');
   const missingDocsTravelers = state.travelers.filter(t=> docCompleteness(t).done < docCompleteness(t).total);
   const placedCount = Object.values(state.placements).reduce((n,arr)=> n + arr.length, 0);
@@ -4509,28 +4566,28 @@ function renderDashboard(){
 
   grid.innerHTML = `
     <div class="dash-card">
-      <div class="dc-head"><h3>Destinations</h3></div>
+      <div class="dc-head"><h3>📍 Destinations</h3></div>
       <div class="dc-num">${state.destinations.length}</div>
       <div class="dc-sub">${destinationsSummaryLabel()}</div>
       <button class="btn ghost small dc-shortcut" data-goto="itineraire">Voir l'itinéraire →</button>
     </div>
 
     <div class="dash-card">
-      <div class="dc-head"><h3>Voyageurs</h3></div>
+      <div class="dc-head"><h3>👪 Voyageurs</h3></div>
       <div class="dc-num">${state.travelers.length}</div>
       <div class="dc-sub">${state.groups.length} groupe${state.groups.length>1?'s':''}</div>
       <button class="btn ghost small dc-shortcut" data-goto="voyageurs">Voir les voyageurs →</button>
     </div>
 
     <div class="dash-card">
-      <div class="dc-head"><h3>Hébergements placés</h3></div>
+      <div class="dc-head"><h3>🏨 Hébergements placés</h3></div>
       <div class="dc-num">${placedCount} / ${state.stays.length}</div>
       <div class="dc-sub">Hébergements affectés à un jour de l'itinéraire</div>
       <button class="btn ghost small dc-shortcut" data-goto="hebergements">Voir le comparateur →</button>
     </div>
 
     <div class="dash-card">
-      <div class="dc-head"><h3>Documents à surveiller</h3></div>
+      <div class="dc-head"><h3>📄 Documents à surveiller</h3></div>
       <div class="dash-list">
         ${missingDocsTravelers.length ? missingDocsTravelers.map(t=>{
           const required = state.settings.requiredDocTypes || REQUIRED_DOC_TYPES;
@@ -4542,7 +4599,7 @@ function renderDashboard(){
     </div>
 
     <div class="dash-card">
-      <div class="dc-head"><h3>Météo</h3></div>
+      <div class="dc-head"><h3>🌤️ Météo</h3></div>
       <div class="dash-list">
         ${state.destinations.length ? state.destinations.map(d=>{
           const cacheKey = `${d.id}|${d.start}|${d.end}`;
@@ -4555,7 +4612,7 @@ function renderDashboard(){
     </div>
 
     <div class="dash-card">
-      <div class="dc-head"><h3>Portail agence</h3></div>
+      <div class="dc-head"><h3>🤝 Portail agence</h3></div>
       <div class="dc-sub" style="margin-bottom:8px;">Aperçu partagé avec l'agence de voyage.</div>
       <div class="dash-list">
         <div class="dash-row"><span>Dossiers complets</span><span>${state.travelers.length - missingDocsTravelers.length}/${state.travelers.length||0}</span></div>
@@ -4603,7 +4660,7 @@ function renderDashboard(){
     </div>
 
     <div class="dash-card dash-wide">
-      <div class="dc-head"><h3>Sauvegardes</h3></div>
+      <div class="dc-head"><h3>☁️ Sauvegardes</h3></div>
       <div class="dc-sub" id="dashBackupSummary">Chargement des sauvegardes…</div>
       <div class="dc-sub" style="margin-top:4px;">Le dossier est enregistré automatiquement à chaque modification — pas besoin de cliquer sur "sauvegarder".</div>
       <div style="display:flex;gap:8px;margin-top:10px;">
