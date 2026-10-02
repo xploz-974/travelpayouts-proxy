@@ -20,7 +20,7 @@ export const BOOKING_BASE_URL = BOOKING_ENV === 'production'
   ? 'https://demandapi.booking.com/3.2'
   : 'https://demandapi-sandbox.booking.com/3.2';
 
-export const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 export const SERPAPI_KEY = process.env.SERPAPI_KEY;
 
@@ -47,8 +47,8 @@ export function warnMissingConfig() {
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
     console.warn('⚠️  Variables R2_* manquantes dans .env — la sauvegarde cloud (/api/backup) échouera.');
   }
-  if (!GEMINI_API_KEY) {
-    console.warn('⚠️  GEMINI_API_KEY manquant dans .env — /api/ai/vision et /api/ai/ask échoueront.');
+  if (!ANTHROPIC_API_KEY) {
+    console.warn('⚠️  ANTHROPIC_API_KEY manquant dans .env — /api/ai/vision et /api/ai/ask échoueront.');
   }
   if (!SERPAPI_KEY) {
     console.warn('⚠️  SERPAPI_KEY manquant dans .env — /api/google-hotels échouera.');
