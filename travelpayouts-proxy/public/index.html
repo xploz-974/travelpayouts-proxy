@@ -2721,7 +2721,7 @@ function readFileAsDataUrl(file){
 }
 
 /* ============================ LECTURE AUTOMATIQUE DE PIÈCE D'IDENTITÉ (IA) ============================
-   Passe par le serveur relais (/api/ai/vision, voir src/routes/ai.js) qui appelle Gemini
+   Passe par le serveur relais (/api/ai/vision, voir src/routes/ai.js) qui appelle Claude
    avec la clé côté serveur — le navigateur ne voit jamais la clé. Lit une photo de
    passeport / carte d'identité et en extrait les champs utiles. Important : l'IA ne
    devine jamais un champ illisible, elle le laisse vide plutôt que d'inventer une
@@ -5762,7 +5762,7 @@ document.getElementById('ai-ask-btn').addEventListener('click', async ()=>{
     const text = (data.text||'').trim();
     answerBox.innerHTML = text ? `<div class="doc-preview-row" style="align-items:flex-start;white-space:pre-wrap;">${text}</div>` : '<p class="dash-empty">Pas de réponse exploitable.</p>';
   }catch(err){
-    answerBox.innerHTML = `<p class="dash-empty">${err.message || "Impossible de contacter l'assistant IA."} Vérifie le serveur relais (⚙ Paramètres) et que GEMINI_API_KEY est configuré côté serveur.</p>`;
+    answerBox.innerHTML = `<p class="dash-empty">${err.message || "Impossible de contacter l'assistant IA."} Vérifie le serveur relais (⚙ Paramètres) et que ANTHROPIC_API_KEY est configuré côté serveur.</p>`;
   }
 });
 
