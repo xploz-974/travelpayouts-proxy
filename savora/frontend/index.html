@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Savora</title>
+<meta name="description" content="Planifie tes repas, déduis ton frigo, fais tes courses sans y penser.">
+<meta name="theme-color" content="#F7F1E6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1A16" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div id="splash" aria-hidden="true">
+  <svg viewBox="0 0 64 64" width="84" height="84"><circle class="sp-ring" cx="32" cy="32" r="26"/><path class="sp-leaf" d="M20 40c0-12 8-20 24-22-1 16-8 24-20 24"/><path class="sp-stem" d="M20 46c4-8 9-14 16-19"/></svg>
+  <span>Savora</span>
+</div>
+
+<div class="shell">
+  <nav class="tabs" id="tabs" aria-label="Navigation">
+    <div class="brand"><svg viewBox="0 0 64 64" width="28" height="28"><circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="4"/><path d="M20 40c0-12 8-20 24-22-1 16-8 24-20 24" fill="currentColor"/></svg><b>Savora</b></div>
+    <div class="tab-list">
+      <span class="tab-pill" id="pill"></span>
+      <button data-view="recipes" class="tab"><i data-i="book"></i><span>Recettes</span></button>
+      <button data-view="plan" class="tab"><i data-i="calendar"></i><span>Semaine</span></button>
+      <button data-view="pantry" class="tab"><i data-i="fridge"></i><span>Frigo</span></button>
+      <button data-view="shop" class="tab"><i data-i="cart"></i><span>Courses</span><em class="badge" id="cart-badge" hidden>0</em></button>
+    </div>
+  </nav>
+  <main id="view" tabindex="-1"></main>
+</div>
+
+<div id="sheet-root"></div>
+<div id="toasts" aria-live="polite"></div>
+<script src="/js/app.js" type="module"></script>
+</body>
+</html>

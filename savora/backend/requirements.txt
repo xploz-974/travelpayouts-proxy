@@ -1,0 +1,9 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+sqlalchemy>=2.0
+httpx>=0.27
+beautifulsoup4>=4.12
+lxml>=5
+pytest>=8
+# Module 4 (automation Drive) :
+# playwright>=1.44

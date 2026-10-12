@@ -1,0 +1,11 @@
+{
+  "name": "Savora",
+  "short_name": "Savora",
+  "description": "Recettes, frigo et courses — sans prise de tête.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F1E6",
+  "theme_color": "#F7F1E6",
+  "lang": "fr",
+  "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
